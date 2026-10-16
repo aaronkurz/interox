@@ -93,10 +93,6 @@ unnoticed until someone opens a notebook.
 Run from the repo root. Nothing here is automated: an upload is irreversible,
 so each step is yours to run.
 
-**0. First release only.** Check the name is free: <https://pypi.org/project/interox/>
-should be a 404 (it was on 2026-10-16). If it is taken, change `name` in
-`pyproject.toml`; the import name and repo name can stay `interox`.
-
 **1. Rebuild the widgets and re-verify** against exactly what you will ship:
 
 ```bash
