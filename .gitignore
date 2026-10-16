@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.python-version
+dist/
+build/
+*.egg-info/
+
+# Test / type-check artefacts
+.pytest_cache/
+.mypy_cache/
+
+# Frontend
+js/node_modules/
+
+# NOTE: interox/static/*.js is committed on purpose -- these are the built
+# bundles the widgets load at import, so `pip install interox` needs no Node.

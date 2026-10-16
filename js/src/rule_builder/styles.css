@@ -1,0 +1,1468 @@
+/* Rule builder widget — histogram-first (Variation B), evolved from rs-/rd- DNA */
+
+.rb-root {
+    --rb-border: #e1e4e8;
+    --rb-muted: #f6f8fa;
+    --rb-text: #24292e;
+    --rb-subtle: #6a737d;
+    --rb-empty: #ebedf0;
+    --rb-blue: #0969da;
+    --rb-blue-soft: rgba(9, 105, 218, 0.08);
+    --rb-green: #2da44e;
+    --rb-red: #cf222e;
+    --rb-amber: #9a6700;
+    --rb-amber-bg: #fff8c5;
+    --rb-hist: #8bb8ec;
+    --rb-hist-pos: #2ea043;
+    --rb-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    color: var(--rb-text);
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 640px;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.rb-root *, .rb-root *::before, .rb-root *::after { box-sizing: border-box; }
+
+.rb-root button { font-family: inherit; }
+
+/* ---------- header ---------- */
+
+.rb-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rb-border);
+    flex: none;
+}
+
+.rb-title { font-size: 14px; font-weight: 700; }
+
+.rb-outcome {
+    font-family: var(--rb-mono);
+    font-size: 11px;
+    white-space: nowrap;
+    background: var(--rb-blue-soft);
+    color: var(--rb-blue);
+    border: 1px solid rgba(9, 105, 218, 0.25);
+    border-radius: 4px;
+    padding: 2px 7px;
+}
+
+.rb-header-hint {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--rb-subtle);
+}
+
+.rb-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--rb-subtle);
+    white-space: nowrap;
+}
+
+.rb-legend i {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex: none;
+}
+
+.rb-legend .rb-legend-pos { background: var(--rb-hist-pos); }
+.rb-legend .rb-legend-all { background: var(--rb-hist); }
+
+/* ---------- attribute importance toggle ---------- */
+
+.rb-impact-btn {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--rb-subtle);
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.rb-impact-btn:hover:not(:disabled) { color: var(--rb-text); background: var(--rb-muted); }
+.rb-impact-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.rb-impact-btn.rb-on {
+    color: var(--rb-blue);
+    background: var(--rb-blue-soft);
+    border-color: rgba(9, 105, 218, 0.35);
+}
+
+/* ---------- info tip ---------- */
+
+.rb-info {
+    position: relative;
+    display: inline-flex;
+    vertical-align: middle;
+}
+
+.rb-info-btn {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--rb-border);
+    background: white;
+    color: var(--rb-subtle);
+    font-size: 9px;
+    font-weight: 700;
+    font-style: italic;
+    font-family: Georgia, serif;
+    line-height: 1;
+    padding: 0;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 100ms ease, color 100ms ease;
+}
+
+.rb-info:hover .rb-info-btn, .rb-info-btn:focus { border-color: var(--rb-blue); color: var(--rb-blue); outline: none; }
+
+.rb-info-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: -8px;
+    width: 218px;
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(27, 31, 36, 0.16);
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.45;
+    color: var(--rb-text);
+    text-transform: none;
+    letter-spacing: 0;
+    z-index: 20;
+    display: none;
+    text-wrap: pretty;
+}
+
+.rb-info:hover .rb-info-pop, .rb-info-btn:focus + .rb-info-pop { display: block; }
+
+.rb-info-right .rb-info-pop { left: auto; right: -8px; }
+
+/* ---------- body layout ---------- */
+
+.rb-body {
+    display: flex;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- attribute rail ---------- */
+
+.rb-rail {
+    /* Width is driven inline by the splitter; this is the initial value. */
+    width: 232px;
+    flex: none;
+    min-width: 0;
+    border-right: 1px solid var(--rb-border);
+    background: var(--rb-muted);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.rb-rail-head {
+    flex: none;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 10px 12px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rb-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rb-rail-head small {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10px;
+}
+
+/* ---------- rail toolbar: search, grouping, filters ---------- */
+
+.rb-rail-toolbar {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 10px 8px;
+    border-bottom: 1px solid var(--rb-border);
+}
+
+.rb-rail-search-wrap { position: relative; display: flex; }
+
+.rb-rail-search {
+    width: 100%;
+    padding: 5px 22px 5px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    color: var(--rb-text);
+    background: white;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.rb-rail-search::-webkit-search-cancel-button { display: none; }
+.rb-rail-search:focus { border-color: var(--rb-blue); box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15); }
+
+.rb-rail-search-clear {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 22px;
+    border: none;
+    background: none;
+    color: var(--rb-subtle);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.rb-rail-search-clear:hover { color: var(--rb-text); }
+
+/* Wraps rather than overflows: at the narrowest rail width the segmented
+   control drops onto its own line instead of spilling past the rail edge. */
+.rb-rail-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.rb-rail-row .rb-seg { flex: 1 1 140px; min-width: 0; }
+.rb-rail-row .rb-seg button { min-width: 0; }
+
+.rb-rail-label {
+    flex: none;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--rb-subtle);
+}
+
+.rb-rail-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    background: white;
+    color: var(--rb-subtle);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 7px;
+    cursor: pointer;
+}
+
+.rb-rail-filter-btn:hover, .rb-rail-filter-btn.rb-on { color: var(--rb-text); border-color: var(--rb-blue); }
+
+.rb-rail-filter-badge {
+    font-family: var(--rb-mono);
+    font-size: 9px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 8px;
+    background: var(--rb-blue);
+    color: white;
+}
+
+.rb-rail-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--rb-subtle);
+    white-space: nowrap;
+}
+
+.rb-rail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 8px;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    background: white;
+    /* Rows wrap as the rail narrows, so the panel has to be capped or it pushes
+       the attribute list out of the (overflow-hidden) rail entirely. */
+    max-height: 260px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #d0d7de transparent;
+}
+
+.rb-rail-slider { flex: 1; min-width: 0; accent-color: var(--rb-blue); }
+
+.rb-rail-value {
+    flex: none;
+    font-family: var(--rb-mono);
+    font-size: 10px;
+    color: var(--rb-subtle);
+}
+
+.rb-rail-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--rb-subtle);
+    cursor: pointer;
+}
+
+.rb-rail-check input { accent-color: var(--rb-blue); margin: 0; }
+
+.rb-rail-facet { display: flex; flex-direction: column; gap: 4px; }
+
+.rb-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+    max-height: 110px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #d0d7de transparent;
+}
+
+.rb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    min-width: 0;
+    border: 1px solid var(--rb-border);
+    border-radius: 10px;
+    background: var(--rb-muted);
+    color: var(--rb-subtle);
+    font-size: 10.5px;
+    padding: 2px 7px;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* An activity name can be far wider than the rail — truncate the label, never
+   the count (the full name is in the chip's own tooltip). */
+.rb-chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.rb-chip:hover { color: var(--rb-text); border-color: var(--rb-blue); }
+
+.rb-chip.rb-on {
+    background: var(--rb-blue-soft);
+    border-color: var(--rb-blue);
+    color: var(--rb-blue);
+    font-weight: 600;
+}
+
+.rb-chip-n { flex: none; font-family: var(--rb-mono); font-size: 9px; opacity: 0.7; }
+
+.rb-rail-reset {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--rb-blue);
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* ---------- rail list ---------- */
+
+.rb-rail-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 10px 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #d0d7de transparent;
+}
+
+.rb-rail-list::-webkit-scrollbar { width: 6px; }
+.rb-rail-list::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 3px; }
+
+.rb-rail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 8px;
+    font-size: 11px;
+    color: var(--rb-subtle);
+    text-align: center;
+}
+
+/* ---------- attribute groups ---------- */
+
+.rb-group { display: flex; flex-direction: column; gap: 6px; }
+
+.rb-group-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    border: none;
+    background: var(--rb-muted);
+    padding: 4px 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--rb-subtle);
+    cursor: pointer;
+}
+
+.rb-group-head:hover { color: var(--rb-text); }
+
+.rb-group-caret { flex: none; font-size: 9px; }
+
+.rb-group-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.rb-group-count {
+    margin-left: auto;
+    flex: none;
+    font-family: var(--rb-mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+}
+
+/* ---------- rail / canvas splitter ---------- */
+
+.rb-splitter {
+    /* A 5px hit target straddling the rail's 1px border: the negative margins
+       keep it from taking any layout space of its own. */
+    flex: none;
+    width: 5px;
+    margin: 0 -2px;
+    position: relative;
+    z-index: 2;
+    cursor: ew-resize;
+    touch-action: none;
+    background: transparent;
+}
+
+.rb-splitter::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2px;
+    right: 2px;
+    background: transparent;
+    transition: background 120ms ease;
+}
+
+.rb-splitter:hover::after,
+.rb-splitter:focus-visible::after,
+.rb-splitter.rb-dragging::after { background: var(--rb-blue); }
+
+.rb-splitter:focus { outline: none; }
+
+/* The pointer leaves the 5px strip constantly while dragging — without this the
+   cursor flickers and text elsewhere in the widget gets selected. */
+.rb-body.rb-resizing, .rb-body.rb-resizing * { cursor: ew-resize !important; user-select: none; }
+
+.rb-attr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    padding: 7px 9px;
+    cursor: grab;
+    user-select: none;
+    box-shadow: 0 1px 2px rgba(27, 31, 36, 0.04);
+    transition: border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.rb-attr:hover {
+    border-color: var(--rb-blue);
+    box-shadow: 0 2px 6px rgba(27, 31, 36, 0.10);
+}
+
+.rb-attr:active { cursor: grabbing; }
+
+.rb-attr.rb-used {
+    opacity: 0.5;
+    cursor: default;
+    box-shadow: none;
+}
+
+.rb-attr.rb-used:hover { border-color: var(--rb-border); }
+
+/* Forbidden outranks used: the row stays legible and in place, but reads as
+   struck from the search rather than merely spent. */
+.rb-attr.rb-forbidden {
+    opacity: 1;
+    cursor: not-allowed;
+    background: rgba(207, 34, 46, 0.04);
+    border-color: rgba(207, 34, 46, 0.28);
+    box-shadow: none;
+}
+
+.rb-attr.rb-forbidden:hover { border-color: rgba(207, 34, 46, 0.28); box-shadow: none; }
+
+.rb-attr.rb-forbidden .rb-attr-name {
+    color: var(--rb-red);
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
+.rb-attr.rb-forbidden .rb-typebadge {
+    background: rgba(207, 34, 46, 0.1);
+    color: var(--rb-red);
+    border-color: rgba(207, 34, 46, 0.2);
+}
+
+.rb-attr-unforbid {
+    flex: none;
+    border: 1px solid rgba(207, 34, 46, 0.3);
+    border-radius: 4px;
+    background: white;
+    color: var(--rb-red);
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 5px;
+    cursor: pointer;
+    transition: background 100ms ease;
+}
+
+.rb-attr-unforbid:hover { background: rgba(207, 34, 46, 0.08); }
+
+.rb-attr-name {
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.rb-attr-check {
+    color: var(--rb-green);
+    font-size: 11px;
+    font-weight: 700;
+    flex: none;
+}
+
+.rb-typebadge {
+    flex: none;
+    font-family: var(--rb-mono);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 3px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--rb-border);
+    color: var(--rb-subtle);
+    background: var(--rb-muted);
+}
+
+.rb-typebadge.num { color: #8250df; background: rgba(130, 80, 223, 0.08); border-color: rgba(130, 80, 223, 0.25); }
+.rb-typebadge.cat { color: #bc4c00; background: rgba(188, 76, 0, 0.08); border-color: rgba(188, 76, 0, 0.25); }
+
+.rb-imp {
+    flex: none;
+    width: 52px;
+    height: 6px;
+    background: var(--rb-empty);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.rb-imp-fill {
+    height: 100%;
+    background: var(--rb-blue);
+    border-radius: 3px;
+    opacity: 0.75;
+}
+
+/* ---------- rule canvas ---------- */
+
+.rb-canvas {
+    flex: 1;
+    min-width: 0;
+    padding: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 10px;
+    overflow-y: auto;
+    transition: background 120ms ease;
+}
+
+.rb-canvas.rb-dragover { background: var(--rb-blue-soft); }
+
+.rb-dropzone {
+    flex: 1;
+    align-self: stretch;
+    border: 1.5px dashed var(--rb-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--rb-subtle);
+    font-size: 12px;
+    min-height: 180px;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+
+.rb-canvas.rb-dragover .rb-dropzone { border-color: var(--rb-blue); color: var(--rb-blue); }
+
+.rb-dropzone b { font-size: 13px; }
+
+.rb-and {
+    align-self: center;
+    font-family: var(--rb-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--rb-subtle);
+    background: var(--rb-muted);
+    border: 1px solid var(--rb-border);
+    border-radius: 10px;
+    padding: 3px 8px;
+    letter-spacing: 0.5px;
+    flex: none;
+}
+
+/* ---------- condition card ---------- */
+
+.rb-cond {
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(27, 31, 36, 0.07);
+    width: 268px;
+    flex: none;
+    overflow: hidden;
+    transition: border-color 120ms ease;
+}
+
+.rb-cond.rb-pinned { border-color: rgba(154, 103, 0, 0.45); }
+.rb-cond.rb-pinned .rb-cond-head { background: rgba(255, 248, 197, 0.6); }
+.rb-cond.rb-pred-pinned { border-color: rgba(154, 103, 0, 0.7); }
+.rb-cond.rb-pred-pinned .rb-cond-head { background: rgba(255, 248, 197, 0.9); }
+
+.rb-cond-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    background: var(--rb-muted);
+    border-bottom: 1px solid var(--rb-border);
+}
+
+.rb-cond-name { font-weight: 600; font-size: 12px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.rb-remove {
+    flex: none;
+    border: none;
+    background: none;
+    color: var(--rb-subtle);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.rb-remove:hover { color: var(--rb-red); background: rgba(207, 34, 46, 0.08); }
+
+.rb-pin {
+    flex: none;
+    border: 1px solid transparent;
+    background: none;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.35;
+    transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.rb-pin:hover { opacity: 1; background: var(--rb-amber-bg); border-color: rgba(154, 103, 0, 0.3); }
+.rb-pin.rb-pinned { opacity: 1; background: var(--rb-amber-bg); border-color: rgba(154, 103, 0, 0.4); }
+
+/* predicate lock: shown only for an already-pinned attribute. Numeric
+   conditions expose two (one per bound), each labelled with its side glyph. */
+.rb-pin-pred { font-size: 10px; opacity: 0.5; display: inline-flex; align-items: center; gap: 1px; }
+.rb-pin-pred.rb-pinned { opacity: 1; }
+.rb-pin-side { font-size: 10px; font-weight: 600; color: var(--rb-amber); }
+
+.rb-cond-body { padding: 10px; display: flex; flex-direction: column; gap: 9px; }
+
+/* ---------- removal impact (attribute importance) ---------- */
+
+/* Sits at the foot of a condition card, bleeding into the card's padding so it
+   reads as a drawer rather than another control. */
+.rb-impact {
+    margin: 1px -10px -10px;
+    padding: 9px 10px 10px;
+    background: var(--rb-muted);
+    border-top: 1px solid var(--rb-border);
+    transition: opacity 120ms ease;
+}
+
+.rb-impact.rb-impact-stale { opacity: 0.4; }
+
+.rb-impact-head {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--rb-subtle);
+    margin-bottom: 7px;
+}
+
+.rb-impact-values {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-family: var(--rb-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    white-space: nowrap;
+}
+
+.rb-impact-track {
+    width: 100%;
+    height: 8px;
+    background: var(--rb-empty);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.rb-impact-bar { height: 100%; display: flex; transition: width 250ms ease; }
+
+.rb-impact-seg { height: 100%; }
+
+.rb-impact-none { font-size: 11px; color: var(--rb-subtle); }
+
+/* A condition that constrains cases but removes none: the bar is empty, so say why. */
+.rb-impact-note { display: block; margin-top: 6px; font-size: 10.5px; color: var(--rb-subtle); }
+
+/* ---------- segmented control ---------- */
+
+.rb-seg {
+    display: flex;
+    gap: 2px;
+    background: var(--rb-muted);
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.rb-seg button {
+    flex: 1;
+    border: 1px solid transparent;
+    background: none;
+    font-family: var(--rb-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rb-subtle);
+    padding: 3px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 100ms ease, color 100ms ease;
+}
+
+.rb-seg button:hover { color: var(--rb-text); }
+
+.rb-seg button.rb-on {
+    background: white;
+    color: var(--rb-text);
+    border-color: var(--rb-border);
+    box-shadow: 0 1px 2px rgba(27, 31, 36, 0.08);
+}
+
+/* ---------- histogram ---------- */
+
+.rb-hist {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    position: relative;
+    height: 30px;
+}
+
+.rb-bin {
+    flex: 1;
+    min-width: 2px;
+    position: relative;
+    border-radius: 2px 2px 0 0;
+    background: var(--rb-empty);
+    overflow: hidden;
+    transition: opacity 120ms ease;
+}
+
+.rb-bin .rb-bin-fill {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: var(--rb-hist);
+    border-radius: 2px 2px 0 0;
+}
+
+.rb-bin .rb-bin-pos {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: var(--rb-hist-pos);
+    border-radius: 2px 2px 0 0;
+    z-index: 1;
+}
+
+.rb-bin.rb-out { opacity: 0.28; }
+
+.rb-hist-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    font-family: var(--rb-mono);
+    color: var(--rb-subtle);
+    margin-top: 2px;
+}
+
+/* ---------- range hist ---------- */
+
+.rb-rhist-wrap { display: flex; flex-direction: column; gap: 3px; }
+
+.rb-rhist {
+    position: relative;
+    height: 56px;
+    touch-action: none;
+    padding-top: 8px;
+}
+
+.rb-rhist .rb-hist { height: 100%; }
+
+.rb-rhist-sel {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: rgba(9, 105, 218, 0.07);
+    border-left: 2px solid var(--rb-blue);
+    border-right: 2px solid var(--rb-blue);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.rb-handle {
+    position: absolute;
+    top: 0;
+    bottom: -2px;
+    width: 18px;
+    margin-left: -9px;
+    z-index: 3;
+    cursor: ew-resize;
+    display: flex;
+    justify-content: center;
+}
+
+.rb-handle::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--rb-blue);
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(27, 31, 36, 0.3);
+    position: absolute;
+    top: -3px;
+}
+
+.rb-handle:hover::after, .rb-handle.rb-dragging::after { transform: scale(1.25); }
+
+.rb-pred-readout {
+    font-family: var(--rb-mono);
+    font-size: 11.5px;
+    color: var(--rb-blue);
+    background: var(--rb-blue-soft);
+    border-radius: 4px;
+    padding: 3px 7px;
+    align-self: flex-start;
+}
+
+.rb-pred-readout.rb-any { color: var(--rb-subtle); background: var(--rb-muted); }
+
+/* ---------- manual boundary inputs ---------- */
+
+.rb-bound-inputs {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.rb-bound-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.rb-bound-op {
+    font-family: var(--rb-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rb-subtle);
+    flex: none;
+}
+
+.rb-bound-input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    font-family: var(--rb-mono);
+    font-size: 11.5px;
+    color: var(--rb-text);
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 4px;
+    padding: 3px 6px;
+    -moz-appearance: textfield;
+}
+
+.rb-bound-input::-webkit-outer-spin-button,
+.rb-bound-input::-webkit-inner-spin-button { margin: 0; }
+
+.rb-bound-input:hover { border-color: #d0d7de; }
+
+.rb-bound-input:focus {
+    outline: none;
+    border-color: var(--rb-blue);
+    box-shadow: 0 0 0 2px var(--rb-blue-soft);
+}
+
+/* ---------- category bars ---------- */
+
+.rb-cats {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 148px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: #d0d7de transparent;
+}
+
+.rb-cats::-webkit-scrollbar { width: 6px; }
+.rb-cats::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 3px; }
+
+.rb-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 3px 6px;
+    cursor: pointer;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 100ms ease, border-color 100ms ease;
+}
+
+.rb-cat-row:hover { background: var(--rb-muted); }
+
+.rb-cat-row.rb-sel { border-color: var(--rb-blue); background: var(--rb-blue-soft); }
+
+
+.rb-cat-label { font-size: 11.5px; width: 86px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.rb-cat-bar { flex: 1; height: 8px; background: var(--rb-empty); border-radius: 4px; overflow: hidden; display: flex; }
+
+.rb-cat-bar .rb-cat-pos { height: 100%; background: var(--rb-hist-pos); }
+.rb-cat-bar .rb-cat-rest { height: 100%; background: var(--rb-hist); }
+
+.rb-cat-n { font-size: 10px; font-family: var(--rb-mono); color: var(--rb-subtle); width: 30px; text-align: right; flex: none; }
+
+/* ---------- footer / evaluation ---------- */
+
+.rb-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    row-gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--rb-border);
+    background: var(--rb-muted);
+    flex: none;
+    min-height: 64px;
+    /* Anchor for the two popovers, which open upward over the canvas. */
+    position: relative;
+}
+
+.rb-eval-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: var(--rb-green);
+    border: 1px solid #2c9248;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    transition: background 120ms ease;
+}
+
+.rb-eval-btn:hover:not(:disabled) { background: #2c9448; }
+.rb-eval-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.rb-eval-btn.rb-stale {
+    background: var(--rb-amber-bg);
+    color: var(--rb-amber);
+    border-color: rgba(154, 103, 0, 0.4);
+}
+
+.rb-optimize-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rb-amber);
+    background: var(--rb-amber-bg);
+    border: 1px solid rgba(154, 103, 0, 0.4);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    transition: background 120ms ease;
+}
+
+.rb-optimize-btn:hover:not(:disabled) { background: #fef3c7; }
+.rb-optimize-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.rb-optimize-btn.rb-on { background: #fef3c7; border-color: var(--rb-amber); }
+
+.rb-btn-caret { font-size: 9px; margin-left: 5px; opacity: 0.75; }
+
+.rb-clear-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rb-subtle);
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+    transition: background 120ms ease;
+}
+
+.rb-clear-btn:hover:not(:disabled) { background: var(--rb-muted); color: var(--rb-text); }
+.rb-clear-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.rb-store-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: var(--rb-blue);
+    border: 1px solid #0860ca;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: none;
+}
+
+.rb-store-btn:hover:not(:disabled) { background: #0860ca; }
+.rb-store-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.rb-footer-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+
+.rb-note-input {
+    width: 220px;
+    min-height: 32px;
+    max-height: 96px;
+    resize: vertical;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1.4;
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    color: var(--rb-text, #24292e);
+    background: white;
+    outline: none;
+}
+
+.rb-note-input:focus { border-color: var(--rb-blue); box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15); }
+.rb-note-input:disabled { opacity: 0.5; cursor: not-allowed; background: var(--rb-muted); }
+
+.rb-metrics {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    row-gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.rb-metrics.rb-stale-dim .rb-metric,
+.rb-metrics.rb-stale-dim .rb-counts,
+.rb-metrics.rb-stale-dim .rb-scope { opacity: 0.4; }
+
+.rb-scope {
+    font-size: 11px;
+    color: var(--rb-subtle);
+    white-space: nowrap;
+}
+
+.rb-scope b { font-family: var(--rb-mono); color: var(--rb-text); font-weight: 600; }
+
+.rb-metric { display: flex; flex-direction: column; gap: 2px; width: 110px; }
+
+.rb-metric-top { display: flex; align-items: baseline; gap: 6px; }
+
+.rb-metric-val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.rb-metric-label { font-size: 11px; color: var(--rb-subtle); font-weight: 600; }
+
+.rb-metric-bar { height: 7px; background: var(--rb-empty); border-radius: 4px; overflow: hidden; }
+
+.rb-metric-fill { height: 100%; border-radius: 4px; transition: width 250ms ease; }
+
+.rb-counts { display: flex; gap: 5px; }
+
+.rb-count {
+    font-family: var(--rb-mono);
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--rb-border);
+    background: white;
+    color: var(--rb-subtle);
+    white-space: nowrap;
+}
+
+.rb-count b { color: var(--rb-text); font-weight: 600; }
+
+.rb-stale-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--rb-amber);
+    background: var(--rb-amber-bg);
+    border: 1px solid rgba(154, 103, 0, 0.35);
+    border-radius: 4px;
+    padding: 3px 8px;
+    white-space: nowrap;
+}
+
+.rb-noeval { font-size: 12px; color: var(--rb-subtle); }
+
+.rb-toast {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--rb-green);
+    background: rgba(45, 164, 78, 0.1);
+    border: 1px solid rgba(45, 164, 78, 0.35);
+    border-radius: 4px;
+    padding: 3px 9px;
+    white-space: nowrap;
+    animation: rb-toast-in 180ms ease;
+}
+
+@keyframes rb-toast-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- footer popovers (optimizer constraints · store rule) ---------- */
+
+/* Both open upward from the footer, over the canvas. `.rb-root` clips its
+   children, so opening downward would put them outside the widget. */
+.rb-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    background: white;
+    border: 1px solid var(--rb-border);
+    border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(27, 31, 36, 0.18);
+    z-index: 30;
+    /* Rounded corners clip their content on x; on y the popover scrolls instead,
+       because a long forbidden list would otherwise grow past the top of the
+       widget, where `.rb-root`'s own overflow would cut it off. */
+    overflow: hidden auto;
+    max-height: min(500px, 62vh);
+    animation: rb-toast-in 140ms ease;
+}
+
+.rb-popover-left { left: 16px; width: 420px; }
+.rb-popover-right { right: 16px; width: 340px; }
+
+.rb-popover-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px 9px;
+}
+
+.rb-popover-title { flex: 1; font-size: 12.5px; font-weight: 700; }
+
+.rb-popover-close {
+    flex: none;
+    border: 0;
+    background: none;
+    color: var(--rb-subtle);
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    cursor: pointer;
+}
+
+.rb-popover-close:hover { color: var(--rb-text); }
+
+.rb-popover-section {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-top: 1px solid var(--rb-border);
+}
+
+.rb-constraint-glyph { flex: none; font-size: 11px; line-height: 1.5; }
+
+.rb-constraint-glyph.rb-forbid-glyph { color: var(--rb-red); font-size: 12px; }
+
+.rb-constraint-body { flex: 1; min-width: 0; }
+
+.rb-constraint-name { font-size: 12px; font-weight: 650; }
+
+.rb-constraint-value {
+    font-family: var(--rb-mono);
+    font-size: 11px;
+    color: var(--rb-text);
+    line-height: 1.45;
+    margin-top: 3px;
+    word-break: break-word;
+}
+
+.rb-constraint-value.rb-empty { font-family: inherit; color: var(--rb-subtle); }
+
+.rb-constraint-where { flex: none; font-size: 10.5px; color: var(--rb-subtle); }
+
+/* ---------- "never use" editor ---------- */
+
+.rb-forbid-section { flex-direction: column; gap: 9px; background: rgba(207, 34, 46, 0.02); }
+
+.rb-forbid-head { display: flex; align-items: center; gap: 9px; width: 100%; }
+
+.rb-forbid-head .rb-constraint-name { flex: 1; }
+
+.rb-forbid-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.rb-forbid-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    background: rgba(207, 34, 46, 0.06);
+    border: 1px solid rgba(207, 34, 46, 0.25);
+    border-radius: 999px;
+    padding: 3px 5px 3px 9px;
+    font-family: var(--rb-mono);
+    font-size: 10.5px;
+    color: var(--rb-red);
+}
+
+.rb-forbid-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rb-forbid-chip-x {
+    flex: none;
+    border: 0;
+    background: none;
+    color: var(--rb-red);
+    opacity: 0.6;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.rb-forbid-chip-x:hover { opacity: 1; }
+
+.rb-forbid-add {
+    border: 1px dashed var(--rb-border);
+    border-radius: 999px;
+    background: white;
+    color: var(--rb-subtle);
+    font-size: 10.5px;
+    padding: 4px 11px;
+    cursor: pointer;
+    transition: border-color 100ms ease, color 100ms ease;
+}
+
+.rb-forbid-add:hover, .rb-forbid-add.rb-on { border-color: var(--rb-red); color: var(--rb-red); }
+
+.rb-forbid-search {
+    border: 1px solid var(--rb-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: white;
+}
+
+.rb-forbid-search-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 0;
+    border-bottom: 1px solid var(--rb-border);
+    padding: 7px 9px;
+    font-family: inherit;
+    font-size: 11.5px;
+    color: var(--rb-text);
+    outline: none;
+}
+
+.rb-forbid-options { max-height: 150px; overflow-y: auto; }
+
+.rb-forbid-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border: 0;
+    background: none;
+    text-align: left;
+    padding: 6px 9px;
+    cursor: pointer;
+}
+
+.rb-forbid-option:hover { background: var(--rb-muted); }
+
+.rb-forbid-option-name {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--rb-mono);
+    font-size: 11px;
+    color: var(--rb-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rb-forbid-option-hint { flex: none; font-size: 10px; color: var(--rb-subtle); }
+
+.rb-forbid-none { padding: 8px 9px; font-size: 11px; color: var(--rb-subtle); }
+
+.rb-forbid-note { font-size: 10.5px; line-height: 1.45; color: var(--rb-subtle); text-wrap: pretty; }
+
+/* ---------- popover footers ---------- */
+
+.rb-popover-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--rb-border);
+    background: var(--rb-muted);
+}
+
+.rb-popover-scope { font-size: 10.5px; color: var(--rb-subtle); }
+
+.rb-run-btn {
+    padding: 6px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--rb-amber);
+    background: var(--rb-amber-bg);
+    border: 1px solid rgba(154, 103, 0, 0.4);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 120ms ease;
+}
+
+.rb-run-btn:hover:not(:disabled) { background: #fef3c7; }
+.rb-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.rb-store-section { flex-direction: column; gap: 9px; }
+
+/* The note is no longer a fixed-width sliver in the footer — inside the popover
+   it gets the full width and room for a few lines. */
+.rb-store-section .rb-note-input { width: 100%; min-height: 64px; max-height: 160px; }
+
+.rb-store-summary {
+    font-family: var(--rb-mono);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--rb-subtle);
+    word-break: break-word;
+}
+
+.rb-store-foot { justify-content: flex-end; }
+
+.rb-store-confirm {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: var(--rb-blue);
+    border: 1px solid #0860ca;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.rb-store-confirm:hover { background: #0860ca; }
+
+.rb-constraint-summary {
+    font-size: 11px;
+    color: var(--rb-subtle);
+    white-space: nowrap;
+    flex: none;
+}

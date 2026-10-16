@@ -1,0 +1,63 @@
+[project]
+name = "interox"
+version = "0.1.0"
+description = "Interactive, rule-based outcome explanation for process-mining case logs, as notebook widgets"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "Aaron Kurz" }]
+keywords = ["process-mining", "case-log", "rule-induction", "explainability", "anywidget", "marimo", "jupyter"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Framework :: Jupyter",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "pandas>=3.0,<4",
+    "numpy>=2.0",
+    "scikit-learn>=1.5",
+    "anywidget>=0.11,<0.12",
+    "traitlets>=5.14",
+    "coolname>=5.0",
+    "eclear>=0.1.0,<0.2",
+    "rulelearn-ripper-interactive>=0.2.3,<0.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/aaronkurz/interox"
+Repository = "https://github.com/aaronkurz/interox"
+Issues = "https://github.com/aaronkurz/interox/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "pylint>=4.0.5",
+    "mypy>=1.20.2",
+    "pandas-stubs>=3.0.0.260204",
+    "pdoc>=16.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["interox"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "interox",
+    "js/src",
+    "js/build.mjs",
+    "js/package.json",
+    "js/package-lock.json",
+    "js/tsconfig.json",
+    "tests",
+    "README.md",
+]
+exclude = ["**/node_modules", "**/__pycache__"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
