@@ -20,7 +20,7 @@ if you are changing the fork itself.
 
 To try a change in a real notebook, point a notebook project at this checkout
 instead of PyPI, e.g. from
-[interox-nodebook-sepsis](https://github.com/aaronkurz/interox-nodebook-sepsis):
+[interox-notebook-sepsis](https://github.com/aaronkurz/interox-notebook-sepsis):
 
 ```bash
 uv add --editable ../interox     # revert with: uv add interox

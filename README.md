@@ -36,7 +36,7 @@ uv run pdoc interox
 ```
 
 A complete walkthrough on a public event log lives in
-[interox-nodebook-sepsis](https://github.com/aaronkurz/interox-nodebook-sepsis).
+[interox-notebook-sepsis](https://github.com/aaronkurz/interox-notebook-sepsis).
 
 ## Requirements
 
