@@ -170,16 +170,14 @@ export function useCaseDraw(): CaseDraw {
     const draw = useCallback(
         (category: DrawCategory, ruleId: number | null = null) => {
             const next = { category, ruleId };
-            setTarget((current) => {
-                // Another case of the same category replaces the one on screen
-                // when it arrives; a different category starts from nothing.
-                if (!sameTarget(current, next)) setPick(null);
-                return next;
-            });
+            // Another case of the same category replaces the one on screen
+            // when it arrives; a different category starts from nothing.
+            if (!sameTarget(target, next)) setPick(null);
+            setTarget(next);
             setError(null);
             awaitedRef.current = send({ kind: "draw", category, iox_rule_id: ruleId });
         },
-        [send],
+        [send, target],
     );
 
     const another = useCallback(() => {

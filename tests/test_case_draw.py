@@ -116,6 +116,34 @@ def test_an_unknown_category_is_a_message(iox_two_rules):
     assert draw(iox_two_rules.get_exp_status(), 'bogus')['error']
 
 
+@pytest.mark.parametrize('bad_rule_id', ['abc', ['x'], {}])
+def test_a_malformed_rule_id_is_a_message_not_an_exception(iox_two_rules, bad_rule_id):
+    status = iox_two_rules.get_exp_status()
+
+    result = draw(status, 'tp', bad_rule_id)
+
+    assert 'case_id' not in result
+    assert result['error']
+
+
+def test_a_request_without_a_request_id_is_ignored(iox_two_rules):
+    status = iox_two_rules.get_exp_status()
+    status.draw_result = {'sentinel': True}
+
+    status.draw_request = {'kind': 'draw', 'category': 'tp'}
+
+    assert status.draw_result == {'sentinel': True}
+
+
+def test_a_request_without_a_kind_is_treated_as_a_draw(iox_two_rules):
+    status = iox_two_rules.get_exp_status()
+
+    status.draw_request = {'request_id': next(_request_ids), 'category': 'fn'}
+
+    assert status.draw_result['category'] == 'fn'
+    assert 'case_id' in status.draw_result
+
+
 # ---------------------------------------------------------------------------
 # opening a drawn case
 # ---------------------------------------------------------------------------

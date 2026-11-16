@@ -14,5 +14,8 @@ build/
 # Frontend
 js/node_modules/
 
+# Personal agent config (launch configurations carry machine-local paths)
+.claude/
+
 # NOTE: interox/static/*.js is committed on purpose -- these are the built
 # bundles the widgets load at import, so `pip install interox` needs no Node.
