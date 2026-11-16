@@ -5,7 +5,7 @@ import RailSplitter, { RAIL_DEFAULT_WIDTH } from "./RailSplitter";
 import RangeHist from "./RangeHist";
 import CatBars from "./CatBars";
 import EvalFooter from "./EvalFooter";
-import { CaseDrawStyles } from "../common/caseDraw";
+import { CaseDrawStyles, useDrawMode } from "../common/caseDraw";
 import ImpactPanel, { IMPACT_HELP } from "./ImpactPanel";
 import { TypeBadge, HistLegend, InfoTip } from "./atoms";
 import { rangeReadout, numBounds, predKey } from "./engine";
@@ -79,6 +79,7 @@ export default function App({
     const [showImpact, setShowImpact] = useState(false);
     const [railWidth, setRailWidth] = useState(RAIL_DEFAULT_WIDTH);
     const [resizing, setResizing] = useState(false);
+    const drawMode = useDrawMode(undefined, !!res && !stale && !isOptimizing);
     const usedIds = conds.map((c) => c.attr);
 
     // Per-attribute removal impact from the last evaluation, keyed by attribute
@@ -117,16 +118,19 @@ export default function App({
         <>
             <style>{styles}</style>
             <CaseDrawStyles />
-            <div className="rb-root rb-v2">
+            <div className="rb-root rb-v2" {...drawMode.rootProps}>
                 <div className="rb-header">
-                    <span className="rb-title">{title}</span>
-                    <span className="rb-outcome">predicts: {outcomeName}</span>
+                    <span className="rb-title" data-cd-context="">{title}</span>
+                    <span className="rb-outcome" data-cd-context="">predicts: {outcomeName}</span>
                     <HistLegend />
                     <span className="rb-header-hint">
-                        click or drag an attribute · drag handles to set boundaries
+                        {drawMode.on
+                            ? "Draw mode: click TP, FP, FN or TN · Esc to exit"
+                            : "click or drag an attribute · drag handles to set boundaries"}
                     </span>
                     <button
                         type="button"
+                        data-cd-context=""
                         className={`rb-impact-btn${showImpact ? " rb-on" : ""}`}
                         disabled={conds.length === 0}
                         aria-pressed={showImpact}
@@ -142,9 +146,9 @@ export default function App({
                         </svg>
                         Attribute importance
                     </button>
-                    <InfoTip align="right">{IMPACT_HELP}</InfoTip>
+                    <InfoTip align="right" context>{IMPACT_HELP}</InfoTip>
                 </div>
-                <div className={`rb-body${resizing ? " rb-resizing" : ""}`}>
+                <div className={`rb-body${resizing ? " rb-resizing" : ""}`} data-cd-context="">
                     <AttrRail
                         attributes={attributes}
                         usedIds={usedIds}
@@ -299,6 +303,9 @@ export default function App({
                     </div>
                 </div>
                 <EvalFooter
+                    drill={drawMode.on}
+                    onToggleDrill={drawMode.toggle}
+                    onExitDrill={drawMode.exit}
                     attributes={attributes}
                     attrMap={attrMap}
                     conds={conds}

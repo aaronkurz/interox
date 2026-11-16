@@ -98,11 +98,11 @@ export default function RuleRow({
     const featureCells = features.map((feature) => {
         const rawValue = rule.features[feature];
         if (rawValue === null || rawValue === undefined || rawValue === "") {
-            return <td key={feature} className="rs-empty-cell" />;
+            return <td key={feature} className="rs-empty-cell" data-cd-context="" />;
         }
         const displayValue = roundPredicate(rawValue);
         return (
-            <td key={feature}>
+            <td key={feature} data-cd-context="">
                 <div className="rs-code" title={displayValue}>{displayValue}</div>
             </td>
         );
@@ -129,7 +129,7 @@ export default function RuleRow({
         });
 
     const actionCell = (
-        <td className="rs-action-cell-td">
+        <td className="rs-action-cell-td" data-cd-context="">
             <div className="rs-action-cell">
                 {isStored ? (
                     <>
@@ -297,12 +297,12 @@ export default function RuleRow({
         <>
             <tr>
                 {actionCell}
-                <td className="rs-rule-name">{rule.ruleName.replace(/-/g, '-\u200B')}</td>
+                <td className="rs-rule-name" data-cd-context="">{rule.ruleName.replace(/-/g, '-\u200B')}</td>
                 <MetricCell value={rule.precision} color={TOKENS.precision} />
                 <MetricCell value={rule.recall} color={TOKENS.recall} />
                 <SplitGlyphCell rule={rule} draw={draw} />
                 {aligned ? featureCells : (
-                    <td className="rs-predicates-cell">
+                    <td className="rs-predicates-cell" data-cd-context="">
                         {predicateTags.length > 0 ? predicateTags : <span className="rs-empty-cell">&mdash;</span>}
                     </td>
                 )}

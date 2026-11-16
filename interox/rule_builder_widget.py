@@ -239,6 +239,7 @@ class RuleBuilderWidget(CaseDrawMixin, anywidget.AnyWidget): # pylint: disable=t
                 'total': 0,
                 'importance': [],
                 'eval_id': self._eval_counter,
+                'request_id': request_id,
             }
             return
 
@@ -269,6 +270,7 @@ class RuleBuilderWidget(CaseDrawMixin, anywidget.AnyWidget): # pylint: disable=t
             'total': int(len(self._case_log)),
             'importance': importance,
             'eval_id': self._eval_counter,
+            'request_id': request_id,
         }
 
     @traitlets.observe('optimize_request')

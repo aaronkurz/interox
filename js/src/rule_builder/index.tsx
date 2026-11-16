@@ -29,7 +29,7 @@ function Widget() {
     const [poolLabel] = useModelState<string>("pool_label");
     const [rawAttributes] = useModelState<RawAttribute[]>("attributes");
     const [flash] = useModelState<string>("flash");
-    const [, setEvalRequest] = useModelState<Record<string, unknown>>("eval_request");
+    const [evalRequest, setEvalRequest] = useModelState<Record<string, unknown>>("eval_request");
     const [evalResult] = useModelState<EvalResult>("eval_result");
     const [, setStoreTrigger] = useModelState<number>("store_trigger");
     const [storeResult] = useModelState<StoreResult>("store_result");
@@ -60,8 +60,10 @@ function Widget() {
     const [forbidden, setForbidden] = React.useState<Set<string>>(new Set());
     const [isOptimizing, setIsOptimizing] = React.useState(false);
 
-    const pendingKeyRef = React.useRef<string>("");
-    const evalCounterRef = React.useRef<number>(0);
+    const pendingEvalRef = React.useRef<{ requestId: number; key: string } | null>(null);
+    const evalCounterRef = React.useRef<number>(
+        typeof evalRequest?.request_id === "number" ? evalRequest.request_id : 0,
+    );
     const lastEvalIdRef = React.useRef<number | null>(null);
     const lastStoreIdRef = React.useRef<number | null>(null);
     const toastTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,14 +91,17 @@ function Widget() {
             const newConds = hydrateConditions(raw, attrMap);
             setConds(newConds);
             setSnap(null);
+            pendingEvalRef.current = null;
             if (newConds.length === 0) return;
             const sendable = newConds.map((c) =>
                 c.op === "range"
                     ? normalizeRangeCondition(attrMap[c.attr] as NumAttribute, c.lo, c.hi)
                     : c,
             );
-            pendingKeyRef.current = JSON.stringify(newConds);
             evalCounterRef.current += 1;
+            pendingEvalRef.current = {
+                requestId: evalCounterRef.current, key: JSON.stringify(newConds),
+            };
             setEvalRequest({ conditions: sendable, request_id: evalCounterRef.current });
         },
         [attrMap, setEvalRequest],
@@ -104,9 +109,12 @@ function Widget() {
 
     React.useEffect(() => {
         if (!evalResult || evalResult.eval_id == null) return;
+        const pending = pendingEvalRef.current;
+        if (!pending || evalResult.request_id !== pending.requestId) return;
         if (evalResult.eval_id === lastEvalIdRef.current) return;
         lastEvalIdRef.current = evalResult.eval_id;
-        setSnap({ key: pendingKeyRef.current, res: evalResult });
+        pendingEvalRef.current = null;
+        setSnap({ key: pending.key, res: evalResult });
     }, [evalResult]);
 
     // A rule stored in a previous incarnation of this widget: the host re-creates
@@ -133,6 +141,7 @@ function Widget() {
         // the next rule without saying so.
         setConds([]);
         setSnap(null);
+        pendingEvalRef.current = null;
         setNote("");
         setPinnedAttrs(new Set());
         setPinnedPreds(new Set());
@@ -341,6 +350,7 @@ function Widget() {
     const clear = React.useCallback(() => {
         setConds([]);
         setSnap(null);
+        pendingEvalRef.current = null;
         setNote("");
         setPinnedAttrs(new Set());
         setPinnedPreds(new Set());
@@ -353,8 +363,11 @@ function Widget() {
                 ? normalizeRangeCondition(attrMap[c.attr] as NumAttribute, c.lo, c.hi)
                 : c,
         );
-        pendingKeyRef.current = JSON.stringify(conds);
+        setSnap(null);
         evalCounterRef.current += 1;
+        pendingEvalRef.current = {
+            requestId: evalCounterRef.current, key: JSON.stringify(conds),
+        };
         setEvalRequest({ conditions: sendable, request_id: evalCounterRef.current });
     }, [conds, attrMap, setEvalRequest]);
 

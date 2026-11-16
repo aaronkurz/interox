@@ -118,6 +118,8 @@ export interface EvalResult {
   total?: number;
   importance?: AttrImportance[];
   eval_id?: number;
+  /** The frontend evaluation request these counts answer, not the result counter. */
+  request_id?: number;
 }
 
 export interface StoreResult {

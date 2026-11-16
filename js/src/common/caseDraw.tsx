@@ -4,8 +4,8 @@
 // becomes a button; clicking it asks Python for one case of that category
 // (`draw_request` -> `draw_result`, see interox/case_draw.py) and the id is
 // shown in a small popover, to be copied or handed to the notebook.
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode, SyntheticEvent } from "react";
 import { useModelState } from "@anywidget/react";
 import styles from "./caseDraw.css";
 
@@ -64,6 +64,83 @@ function sameTarget(a: DrawTarget | null, b: DrawTarget | null): boolean {
 
 export function isDrawn(draw: CaseDraw, category: DrawCategory, ruleId: number | null = null): boolean {
     return sameTarget(draw.target, { category, ruleId });
+}
+
+/**
+ * Widget-local focus mode. Mark unrelated regions with data-cd-context.
+ * Only their controls become inert: making an entire scrollable region inert
+ * would also prevent users from scrolling its contents.
+ */
+export function useDrawMode(onExit?: () => void, available = true) {
+    const [on, setOn] = useState(false);
+    const root = useRef<HTMLDivElement>(null);
+    const focusToggle = useCallback(() => {
+        root.current?.querySelector<HTMLButtonElement>(".cd-toggle")?.focus();
+    }, []);
+    const exit = useCallback(() => {
+        const scope = root.current?.getRootNode();
+        const activeElement = scope instanceof ShadowRoot
+            ? scope.activeElement : root.current?.ownerDocument.activeElement;
+        const restoreFocus = root.current?.hasAttribute("data-cd-mode")
+            && !!activeElement && root.current.contains(activeElement);
+        setOn(false);
+        onExit?.();
+        if (restoreFocus) focusToggle();
+    }, [onExit, focusToggle]);
+    const toggle = () => {
+        if (on) exit();
+        else if (available) {
+            setOn(true);
+            focusToggle();
+        }
+    };
+
+    useEffect(() => {
+        if (on && !available) exit();
+    }, [on, available, exit]);
+
+    // Re-scan on each commit, including newly arrived rule/evaluation content.
+    useLayoutEffect(() => {
+        const selector = "button, input, select, textarea, a[href], [tabindex], [draggable]";
+        for (const context of root.current?.querySelectorAll("[data-cd-context]") ?? []) {
+            if (context instanceof HTMLElement && context.matches(selector)) context.inert = on;
+            for (const control of context.querySelectorAll<HTMLElement>(selector)) {
+                control.inert = on;
+            }
+        }
+    });
+
+    const blockContext = (event: SyntheticEvent) => {
+        if (on && event.target instanceof Element && event.target.closest("[data-cd-context]")) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+    const onKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (on && event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            exit();
+        } else {
+            blockContext(event);
+        }
+    };
+
+    return {
+        on, toggle, exit, focusToggle,
+        rootProps: {
+            ref: root,
+            "data-cd-widget": "",
+            "data-cd-mode": on ? "" : undefined,
+            onKeyDownCapture,
+            onClickCapture: blockContext,
+            onDoubleClickCapture: blockContext,
+            onPointerDownCapture: blockContext,
+            onDragStartCapture: blockContext,
+            onDragOverCapture: blockContext,
+            onDropCapture: blockContext,
+        },
+    };
 }
 
 /** Must be called below the anywidget render root, like `useModelState` itself. */
@@ -210,13 +287,13 @@ export function DrillToggle({ on, onToggle, compact, disabled, hint }: DrillTogg
             type="button"
             className={`cd-toggle${on ? " cd-toggle--on" : ""}${compact ? " cd-toggle--compact" : ""}`}
             aria-pressed={on}
-            aria-label={compact ? "Draw a case" : undefined}
-            disabled={disabled}
-            title={`Draw a case: click ${hint} to get the id of one case behind it`}
+            aria-label={compact ? (on ? "Exit draw mode" : "Draw a case") : undefined}
+            disabled={!on && disabled}
+            title={on ? "Exit draw mode (Esc)" : `Draw a case: click ${hint} to get the id of one case behind it`}
             onClick={onToggle}
         >
             <DiceIcon />
-            {compact ? null : "Draw a case"}
+            {compact ? null : on ? "Exit draw mode" : "Draw a case"}
         </button>
     );
 }
@@ -245,15 +322,6 @@ export function DrawPopover({ draw, color, scope, className, style, children }: 
     }, [pick?.caseId, pick?.category, pick?.ruleId]);
 
     const { close } = draw;
-    useEffect(() => {
-        if (!target) return;
-        const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") close();
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [target, close]);
-
     if (!target) return null;
 
     const copy = async () => {
@@ -320,7 +388,11 @@ export function DrawPopover({ draw, color, scope, className, style, children }: 
                         ) : null}
                     </>
                 ) : null}
-                <button type="button" className="cd-close" aria-label="Close" onClick={close}>
+                <button type="button" className="cd-close" aria-label="Close" onClick={(event) => {
+                    close();
+                    event.currentTarget.closest("[data-cd-widget]")
+                        ?.querySelector<HTMLButtonElement>(".cd-toggle")?.focus();
+                }}>
                     ✕
                 </button>
             </span>

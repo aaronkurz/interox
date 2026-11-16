@@ -82,7 +82,7 @@ function SplitGlyphLine({
     return (
         <div className="rs-glyph-container" title={draw ? undefined : title}>
             <CountLabel category={category} label={label} total={total} rule={rule} draw={draw} />
-            <div className="rs-glyph-bar-container" title={title}>
+            <div className="rs-glyph-bar-container" title={title} data-cd-context="">
                 {total > 0
                     ? (
                         <>

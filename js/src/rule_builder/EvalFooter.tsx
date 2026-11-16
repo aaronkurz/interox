@@ -17,7 +17,7 @@ const DRAW_COLORS: Record<DrawCategory, string> = {
 function Metric({ label, value, color }: { label: string; value: number | null; color: string }) {
     const pct = value == null ? null : Math.round(value * 100);
     return (
-        <div className="rb-metric">
+        <div className="rb-metric" data-cd-context="">
             <div className="rb-metric-top">
                 <span className="rb-metric-val">{pct == null ? "–" : `${pct}%`}</span>
                 <span className="rb-metric-label">{label}</span>
@@ -87,9 +87,10 @@ function MetricsPanel({
                     );
                 })}
             </div>
-            <DrillToggle on={drill} onToggle={onToggleDrill} compact hint="TP, FP, FN or TN" />
+            <DrillToggle on={drill} onToggle={onToggleDrill} disabled={stale}
+                compact hint="TP, FP, FN or TN" />
             {res.total != null ? (
-                <span className="rb-scope" title="Cases this rule was evaluated against">
+                <span className="rb-scope" title="Cases this rule was evaluated against" data-cd-context="">
                     of <b>{res.total}</b> {poolLabel}
                 </span>
             ) : null}
@@ -103,6 +104,9 @@ function MetricsPanel({
 }
 
 interface EvalFooterProps {
+    drill: boolean;
+    onToggleDrill: () => void;
+    onExitDrill: () => void;
     attributes: Attribute[];
     attrMap: Record<string, Attribute>;
     conds: Condition[];
@@ -126,6 +130,9 @@ interface EvalFooterProps {
 }
 
 export default function EvalFooter({
+    drill,
+    onToggleDrill,
+    onExitDrill,
     attributes,
     attrMap,
     conds,
@@ -159,7 +166,6 @@ export default function EvalFooter({
 
     // Drawing a case is the third thing that opens over the canvas, and it gives
     // way to the other two like they do to each other.
-    const [drill, setDrill] = useState(false);
     const draw = useCaseDraw();
     const closeDraw = draw.close;
     const evalId = res?.eval_id ?? null;
@@ -168,15 +174,20 @@ export default function EvalFooter({
     // edited or evaluated again, it is no longer a case of what is on screen.
     useEffect(() => {
         closeDraw();
-    }, [stale, evalId, closeDraw]);
+        onExitDrill();
+    }, [stale, evalId, closeDraw, onExitDrill]);
 
     useEffect(() => {
         if (open !== null) closeDraw();
     }, [open, closeDraw]);
 
+    useEffect(() => {
+        if (drill) setOpen(null);
+        else closeDraw();
+    }, [drill, closeDraw]);
+
     const toggleDrill = () => {
-        if (drill) closeDraw();
-        setDrill((on) => !on);
+        onToggleDrill();
     };
 
     const drawCase: CaseDraw = {
@@ -225,6 +236,7 @@ export default function EvalFooter({
         <div className="rb-footer">
             <button
                 type="button"
+                data-cd-context=""
                 className={`rb-optimize-btn${open === "optimize" ? " rb-on" : ""}`}
                 aria-expanded={open === "optimize"}
                 onClick={() => setOpen((o) => (o === "optimize" ? null : "optimize"))}
@@ -236,6 +248,7 @@ export default function EvalFooter({
             <button
                 type="button"
                 className={`rb-eval-btn${stale ? " rb-stale" : ""}`}
+                data-cd-context=""
                 disabled={!hasConditions}
                 onClick={onEvaluate}
             >
@@ -244,6 +257,7 @@ export default function EvalFooter({
             <button
                 type="button"
                 className="rb-clear-btn"
+                data-cd-context=""
                 disabled={!canClear}
                 onClick={onClear}
                 title="Remove all conditions, pins and locks"
@@ -253,6 +267,7 @@ export default function EvalFooter({
             {summaryParts.length ? (
                 <span
                     className="rb-constraint-summary"
+                    data-cd-context=""
                     title="Constraints the next optimize run will honour"
                 >
                     {summaryParts.join(" · ")}
@@ -266,7 +281,7 @@ export default function EvalFooter({
                 onToggleDrill={toggleDrill}
                 draw={drill && res && !stale ? drawCase : null}
             />
-            <div className="rb-footer-right">
+            <div className="rb-footer-right" data-cd-context="">
                 {toast ? <span className="rb-toast">{toast}</span> : null}
                 <button
                     type="button"

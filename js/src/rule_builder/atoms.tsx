@@ -25,11 +25,13 @@ export function ImportanceBar({ value }: { value: number }) {
 interface InfoTipProps {
     children: ReactNode;
     align?: "right";
+    context?: boolean;
 }
 
-export function InfoTip({ children, align }: InfoTipProps) {
+export function InfoTip({ children, align, context }: InfoTipProps) {
     return (
-        <span className={`rb-info${align === "right" ? " rb-info-right" : ""}`}>
+        <span className={`rb-info${align === "right" ? " rb-info-right" : ""}`}
+            data-cd-context={context ? "" : undefined}>
             <button type="button" className="rb-info-btn" aria-label="What does importance mean?">
                 i
             </button>
@@ -44,6 +46,7 @@ export function HistLegend() {
     return (
         <span
             className="rb-legend"
+            data-cd-context=""
             title="Histogram colors: green = cases where the outcome is positive (rule should catch these), blue = all other cases"
         >
             <i className="rb-legend-pos" />

@@ -4,7 +4,7 @@ import { COLORS, DIMMED } from "./tokens";
 import { normalizeData, formatPercent, formatCount } from "./data";
 import Flow from "./Flow";
 import type { SelectionKey } from "./types";
-import { DiceIcon, DrawPopover, DrillToggle, useCaseDraw } from "../common/caseDraw";
+import { DiceIcon, DrawPopover, DrillToggle, useCaseDraw, useDrawMode } from "../common/caseDraw";
 import type { DrawCategory } from "../common/caseDraw";
 
 /** The flow's groups, as the categories a case is drawn from. */
@@ -49,9 +49,10 @@ interface TileProps {
     drawable?: boolean;
     /** Draw mode, but nothing to draw here. */
     empty?: boolean;
+    context?: boolean;
 }
 
-function Tile({ label, value, color, lit, onSelect, pressed, drawable, empty }: TileProps) {
+function Tile({ label, value, color, lit, onSelect, pressed, drawable, empty, context }: TileProps) {
     const body: ReactNode = (
         <>
             <span className="es-tile-label">
@@ -63,11 +64,11 @@ function Tile({ label, value, color, lit, onSelect, pressed, drawable, empty }: 
             </span>
         </>
     );
-    const style = { opacity: lit ? 1 : DIMMED };
+    const style = context ? undefined : { opacity: lit ? 1 : DIMMED };
 
     if (!onSelect) {
         return (
-            <div className="es-tile" style={style}>
+            <div className="es-tile" style={style} data-cd-context={context ? "" : undefined}>
                 {body}
             </div>
         );
@@ -109,8 +110,12 @@ export default function ExplanationStatus({
     const [selection, setSelection] = useState<SelectionKey | null>(null);
     const [toScale, setToScale] = useState(false);
 
-    const [drill, setDrill] = useState(false);
     const draw = useCaseDraw();
+    const mode = useDrawMode(() => {
+        draw.close();
+        setSelection(null);
+    }, data.totalCases > 0);
+    const drill = mode.on;
 
     const counts: Record<SelectionKey, number> = {
         open: data.casesTbe,
@@ -120,8 +125,8 @@ export default function ExplanationStatus({
     };
 
     // One click, two meanings: outside draw mode it highlights a group, in draw
-    // mode it also hands out a case of it. The highlight is kept either way, so
-    // the group a drawn case belongs to is the one lit up.
+    // mode it also hands out a case of it. All other draw targets remain
+    // available; the selected tile/band marks the drawn case's group.
     const toggle = (key: SelectionKey) => {
         if (!drill) {
             setSelection((current) => (current === key ? null : key));
@@ -133,11 +138,8 @@ export default function ExplanationStatus({
     };
 
     const toggleDrill = () => {
-        if (drill) {
-            draw.close();
-            setSelection(null);
-        }
-        setDrill((on) => !on);
+        setSelection(null);
+        mode.toggle();
     };
 
     const clearSelection = () => {
@@ -156,7 +158,7 @@ export default function ExplanationStatus({
     const caretColumn = draw.target ? TILE_COLUMN[draw.target.category] : undefined;
 
     return (
-        <div className="es-root">
+        <div className="es-root" {...mode.rootProps}>
             <div className="es-header">
                 <div className="es-title">Explanation status</div>
                 <div className="es-pills">
@@ -164,6 +166,7 @@ export default function ExplanationStatus({
                         type="button"
                         className={`es-pill${toScale ? " es-pill--on" : ""}`}
                         aria-pressed={toScale}
+                        data-cd-context=""
                         disabled={data.expTn === 0}
                         onClick={() => setToScale((on) => !on)}
                     >
@@ -173,6 +176,7 @@ export default function ExplanationStatus({
                     <button
                         type="button"
                         className="es-pill"
+                        data-cd-context=""
                         disabled={selection === null}
                         onClick={clearSelection}
                     >
@@ -189,7 +193,7 @@ export default function ExplanationStatus({
 
             {drill ? (
                 <div className="es-draw-hint">
-                    Draw mode: click a group — a band or a tile — to get the id of one case in it.
+                    Draw mode: click a group — a band or a tile — to get the id of one case in it. Esc to exit.
                 </div>
             ) : null}
 
@@ -200,7 +204,7 @@ export default function ExplanationStatus({
                     label="Remaining cases (FN)"
                     value={formatCount(data.casesTbe)}
                     color={COLORS.toBeExplained}
-                    lit={isLit("open", selection)}
+                    lit={drill ? counts.open > 0 : isLit("open", selection)}
                     pressed={selection === "open"}
                     onSelect={() => toggle("open")}
                     {...tileDraw("open")}
@@ -209,7 +213,7 @@ export default function ExplanationStatus({
                     label="Explained (TP)"
                     value={formatCount(data.expTp)}
                     color={COLORS.explainedCorrectly}
-                    lit={isLit("exp", selection)}
+                    lit={drill ? counts.exp > 0 : isLit("exp", selection)}
                     pressed={selection === "exp"}
                     onSelect={() => toggle("exp")}
                     {...tileDraw("exp")}
@@ -218,7 +222,7 @@ export default function ExplanationStatus({
                     label="Wrongly claimed (FP)"
                     value={formatCount(data.expFp)}
                     color={COLORS.falsePositives}
-                    lit={isLit("fp", selection)}
+                    lit={drill ? counts.fp > 0 : isLit("fp", selection)}
                     pressed={selection === "fp"}
                     onSelect={() => toggle("fp")}
                     {...tileDraw("fp")}
@@ -243,18 +247,21 @@ export default function ExplanationStatus({
                     value={formatPercent(data.precision)}
                     color={COLORS.precision}
                     lit={isLit("precision", selection)}
+                    context={drill}
                 />
                 <Tile
                     label="Recall"
                     value={formatPercent(data.recall)}
                     color={COLORS.recall}
                     lit={isLit("recall", selection)}
+                    context={drill}
                 />
                 <Tile
                     label="Explanation size"
                     value={`${formatCount(data.storedRules)} ${data.storedRules === 1 ? "rule" : "rules"}`}
                     color={COLORS.storedRules}
                     lit={isLit("rules", selection)}
+                    context={drill}
                 />
             </div>
         </div>

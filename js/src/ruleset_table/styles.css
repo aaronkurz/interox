@@ -233,6 +233,12 @@
     gap: 12px;
 }
 
+/* Let draw guidance move onto another line instead of shrinking to one word. */
+[data-cd-mode] .rs-toggle-bar,
+[data-cd-mode] .rs-toggle-bar-left {
+    flex-wrap: wrap;
+}
+
 /* One-shot outcome of an action, published by Python. It sits beside the view
    toggle rather than floating over the table, so it never covers a rule, and
    clicking it dismisses it early. */

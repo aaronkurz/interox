@@ -4,7 +4,7 @@ import RuleRow from "./RuleRow";
 import { normalizeRule } from "./data";
 import { FEATURE_PALETTE } from "./tokens";
 import type { ActionKind, RawRule, TableMode, Toast } from "./types";
-import { DrillToggle, useCaseDraw } from "../common/caseDraw";
+import { DrillToggle, useCaseDraw, useDrawMode } from "../common/caseDraw";
 
 interface RulesetTableProps {
     rules: RawRule[];
@@ -42,12 +42,13 @@ export default function RulesetTable({
     const [minPrecision, setMinPrecision] = useState(0);
     const [minRecall, setMinRecall] = useState(0);
     const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
-    const [drill, setDrill] = useState(false);
     const draw = useCaseDraw();
+    const drawMode = useDrawMode(draw.close, rules.length > 0);
+    const drill = drawMode.on;
 
     const toggleDrill = () => {
-        if (drill) draw.close();
-        setDrill((on) => !on);
+        setOpenPanel(null);
+        drawMode.toggle();
     };
 
     const normalizedRules = useMemo(
@@ -70,7 +71,7 @@ export default function RulesetTable({
     }, [features]);
 
     const featureHeaders = features.map((f) => (
-        <th key={f}>{f}</th>
+        <th key={f} data-cd-context="">{f}</th>
     ));
 
     const featureSummaryRow = features.map((f) => (
@@ -80,7 +81,7 @@ export default function RulesetTable({
     // Columns: action + Rule + Precision + Recall + TP/FP/FN + (features | Predicates)
     const totalCols = 1 + 4 + (aligned ? features.length : 1);
 
-    const featureHeaderCells = aligned ? featureHeaders : <th>Predicates</th>;
+    const featureHeaderCells = aligned ? featureHeaders : <th data-cd-context="">Predicates</th>;
 
     const togglePanel = (ioxRuleId: number, panelMode: PanelMode) => {
         setOpenPanel((prev) =>
@@ -100,7 +101,7 @@ export default function RulesetTable({
     const toolbar = (
         <div className="rs-toggle-bar">
             <div className="rs-toggle-bar-left">
-                <label className="rs-toggle">
+                <label className="rs-toggle" data-cd-context="">
                     <input
                         type="checkbox"
                         checked={aligned}
@@ -117,10 +118,12 @@ export default function RulesetTable({
                     disabled={rules.length === 0}
                     hint="a rule's TP, FP or FN"
                 />
+                {drill ? <span className="cd-hint">Click a rule’s TP, FP or FN · Esc to exit</span> : null}
                 {toast && (
                     <button
                         type="button"
                         className={`rs-toast${toast.level === "warn" ? " rs-toast-warn" : ""}`}
+                        data-cd-context=""
                         title="Dismiss"
                         onClick={onDismissToast}
                     >
@@ -128,7 +131,7 @@ export default function RulesetTable({
                     </button>
                 )}
             </div>
-            <div className="rs-toggle-bar-right">
+            <div className="rs-toggle-bar-right" data-cd-context="">
                 <div className="rs-filter-group">
                     <label className="rs-filter-label">Precision &ge;</label>
                     <input
@@ -170,20 +173,20 @@ export default function RulesetTable({
         : "No rules match the current filters.";
 
     return (
-        <div>
+        <div {...drawMode.rootProps}>
             {toolbar}
             <table className="rs-root">
                 <thead>
                     <tr>
-                        <th className="rs-action-col" />
-                        <th>Rule</th>
-                        <th>Precision</th>
-                        <th>Recall</th>
+                        <th className="rs-action-col" data-cd-context="" />
+                        <th data-cd-context="">Rule</th>
+                        <th data-cd-context="">Precision</th>
+                        <th data-cd-context="">Recall</th>
                         <th>TP / FP / FN</th>
                         {featureHeaderCells}
                     </tr>
                     {aligned && (
-                        <tr className="rs-summary-row">
+                        <tr className="rs-summary-row" data-cd-context="">
                             <th className="rs-summary-spacer rs-action-col" />
                             <th className="rs-summary-spacer" />
                             <th className="rs-summary-spacer" />

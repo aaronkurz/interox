@@ -132,6 +132,11 @@
     outline-offset: 1px;
 }
 
+.es-band--drawn {
+    stroke: var(--es-text);
+    stroke-width: 1.5px;
+}
+
 .es-tiles {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

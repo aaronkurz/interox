@@ -229,6 +229,11 @@ Frontend, from `js/`:
 | `npm run dev` | Watch mode — rebuilds on file changes |
 | `npm run typecheck` | Run `tsc --noEmit` to validate types |
 
+Evaluation results in the rule builder echo the frontend `request_id` as well
+as carrying their own `eval_id`. The frontend accepts only the reply to its
+latest pending request, so overlapping evaluations cannot associate old counts
+with a newer rule or enable drawing from them.
+
 Python, from the repo root:
 
 ```bash
