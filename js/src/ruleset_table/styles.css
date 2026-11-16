@@ -606,3 +606,33 @@
     font-style: italic;
     max-width: 640px;
 }
+
+/* Draw mode: the counts are buttons, and a drawn case sits under its rule. */
+.rs-glyph-cell--draw {
+    gap: 3px;
+}
+
+.rs-glyph-cell--draw .rs-glyph-container {
+    width: 150px;
+}
+
+.rs-glyph-draw {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: auto;
+    min-width: 66px;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+.rs-root td.rs-draw-cell {
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--rs-border);
+}
+
+.rs-draw-pop {
+    max-width: 720px;
+    animation: rs-slide 160ms ease;
+}

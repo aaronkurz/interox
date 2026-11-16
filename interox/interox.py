@@ -189,21 +189,83 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
             "exp_tn": exp_tn,
         }
 
-    def get_exp_status(self) -> ExplanationStatusWidget:
+    def _status_case_ids(self, category: str, _iox_rule_id=None) -> pd.Index:
+        """Case ids of one of the four groups `_get_exp_status_data` counts."""
+        claimed = self._explained_cases
+        masks = {
+            'tp': claimed & self._outcome,
+            'fp': claimed & ~self._outcome,
+            'fn': ~claimed & self._outcome,
+            'tn': ~claimed & ~self._outcome,
+        }
+        return self._case_log.index[masks[category].to_numpy()]
+
+    def _rule_case_ids(self, stored: bool, category: str,
+                       iox_rule_id: Union[int, None]) -> pd.Index:
+        """Case ids behind one rule's TP, FP or FN, as its table row counts them.
+
+        Goes through the public `get_data_*_rule_by_id` accessors, so a drawn
+        case is one the notebook's own case browser would list under the same
+        filter: over the whole case log for a stored rule, over the unclaimed
+        cases for a suggested one.
+        """
+        filters: Dict[str, Tuple[CaseFilter, bool]] = {
+            'tp': ('positive', True),
+            'fp': ('negative', True),
+            'fn': ('positive', False),
+        }
+        if category not in filters or iox_rule_id is None:
+            raise ValueError(f"Cannot draw a '{category}' case for a rule.")
+        outcome, pass_ = filters[category]
+        getter = (self.get_data_stored_rule_by_id if stored
+                  else self.get_data_suggested_rule_by_id)
+        return getter(iox_rule_id, outcome=outcome, pass_=pass_).index
+
+    def _rule_case_is_shared(self, stored: bool, category: str,
+                             iox_rule_id: Union[int, None], case_id) -> Union[bool, None]:
+        """Whether another rule of the same ruleset covers this TP or FP too.
+
+        The counterpart, per case, of the unique / non-unique split the table
+        draws as a bar. `None` for an FN: no rule covers it, so there is nothing
+        to share.
+        """
+        if category not in ('tp', 'fp') or iox_rule_id is None:
+            return None
+        if stored:
+            analyzer = self._stored_ruleset_analyzer
+            index = self._require_stored_index(iox_rule_id)
+        else:
+            analyzer = self._suggested_ruleset_analyzer
+            index = self._require_suggested_index(iox_rule_id)
+        unique = analyzer.get_unique_TP_FP_per_rule()[index][f'unique_{category}_cases']
+        return case_id not in unique.index
+
+    def get_exp_status(self, on_case_open=None) -> ExplanationStatusWidget:
         """Return a widget view of explanation status.
+
+        In the widget's *Draw a case* mode, clicking one of the four case groups
+        hands out the id of a case in it.
+
+        Args:
+            on_case_open: Optional callback invoked as ``on_case_open(case_id)``
+                when the user asks to open a drawn case, e.g. to show it in a
+                case view elsewhere in the notebook. `case_id` is the case's
+                label in the case log index.
 
         Returns:
             `ExplanationStatusWidget` populated with current explanation
             progress counts and the size of the stored ruleset.
         """
         exp_status = self._get_exp_status_data()
-        return ExplanationStatusWidget(
+        widget = ExplanationStatusWidget(
             cases_tbe=exp_status["cases_tbe"],
             exp_tp=exp_status["exp_tp"],
             exp_fp=exp_status["exp_fp"],
             exp_tn=exp_status["exp_tn"],
             stored_rules=self.get_len_stored_ruleset(),
         )
+        widget.set_draw_context(self._status_case_ids, on_case_open=on_case_open)
+        return widget
 
     def get_len_suggested_ruleset(self) -> int:
         """ Get number of rules in the suggested ruleset. """
@@ -663,7 +725,7 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
 
         return rules_data, feature_columns
 
-    def get_stored_ruleset(self, on_refresh=None) -> RulesetTableWidget:
+    def get_stored_ruleset(self, on_refresh=None, on_case_open=None) -> RulesetTableWidget:
         """Return a table widget for stored rules with *metrics computed over the whole case log*.
 
         The returned widget exposes inline controls to remove a stored rule
@@ -673,6 +735,9 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
         Args:
             on_refresh: Optional callback invoked after a rule is removed or its
                 annotation is edited, e.g. to refresh dependent notebook cells.
+            on_case_open: Optional callback invoked as ``on_case_open(case_id)``
+                when the user asks to open a case drawn from a rule's TP, FP or
+                FN (see `get_exp_status`).
 
         Returns:
             `RulesetTableWidget` with rule-level metrics, TP/FP uniqueness
@@ -703,9 +768,15 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
                 self.set_stored_annotation_by_id(rid, note),
                 on_refresh() if on_refresh else None),
         )
+        ruleset_table_widget.set_draw_context(
+            lambda category, rid: self._rule_case_ids(True, category, rid),
+            on_case_open=on_case_open,
+            shared_of=lambda category, rid, case_id: self._rule_case_is_shared(
+                True, category, rid, case_id),
+        )
         return ruleset_table_widget
 
-    def get_suggested_ruleset(self, on_refresh=None) -> RulesetTableWidget:
+    def get_suggested_ruleset(self, on_refresh=None, on_case_open=None) -> RulesetTableWidget:
         """Return a table widget for suggested rules on unclaimed cases.
 
         The returned widget exposes an inline control to store a suggested rule
@@ -714,6 +785,9 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
         Args:
             on_refresh: Optional callback invoked after a rule is stored, e.g.
                 to refresh dependent notebook cells.
+            on_case_open: Optional callback invoked as ``on_case_open(case_id)``
+                when the user asks to open a case drawn from a rule's TP, FP or
+                FN (see `get_exp_status`).
 
         Returns:
             `RulesetTableWidget` with rule-level metrics, TP/FP uniqueness
@@ -749,6 +823,12 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
                 self.store_rule_by_id(rid, note),
                 on_refresh() if on_refresh else None),
             edit_callback=edit,
+        )
+        ruleset_table_widget.set_draw_context(
+            lambda category, rid: self._rule_case_ids(False, category, rid),
+            on_case_open=on_case_open,
+            shared_of=lambda category, rid, case_id: self._rule_case_is_shared(
+                False, category, rid, case_id),
         )
         return ruleset_table_widget
 
@@ -855,7 +935,7 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
         )
 
     def get_rule_builder(self, scope: Literal['remaining', 'all'] = 'remaining',
-                         on_refresh=None):
+                         on_refresh=None, on_case_open=None):
         """Return an interactive widget for building a rule from scratch.
 
         The user drags/clicks attributes (ranked by tree-based importance) into
@@ -873,6 +953,9 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
                 a new rule. ``'all'`` uses the whole case log.
             on_refresh: Optional callback invoked after a rule is stored, e.g.
                 to refresh dependent notebook cells.
+            on_case_open: Optional callback invoked as ``on_case_open(case_id)``
+                when the user asks to open a case drawn from the evaluated
+                rule's counts (see `get_exp_status`).
 
         Returns:
             A `RuleBuilderWidget` populated with per-attribute summaries and
@@ -923,6 +1006,7 @@ class InterOX: # pylint: disable=too-many-instance-attributes, too-many-public-m
             outcome,
             store_callback=lambda rule, note='': self._store_from_rule_builder(
                 rule, note, on_refresh),
+            on_case_open=on_case_open,
         )
         self._rule_builder = widget
         return widget

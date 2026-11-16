@@ -1466,3 +1466,27 @@
     white-space: nowrap;
     flex: none;
 }
+
+/* Draw mode: the four counts are buttons, and the drawn case opens over the
+   canvas like the other two popovers. */
+button.rb-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-style: dashed;
+    cursor: pointer;
+}
+
+button.rb-count:disabled {
+    cursor: default;
+}
+
+.rb-draw-pop {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 16px;
+    right: 16px;
+    max-width: 640px;
+    margin: 0 auto;
+    z-index: 30;
+}

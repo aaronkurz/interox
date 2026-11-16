@@ -4,6 +4,27 @@ import { COLORS, DIMMED } from "./tokens";
 import { normalizeData, formatPercent, formatCount } from "./data";
 import Flow from "./Flow";
 import type { SelectionKey } from "./types";
+import { DiceIcon, DrawPopover, DrillToggle, useCaseDraw } from "../common/caseDraw";
+import type { DrawCategory } from "../common/caseDraw";
+
+/** The flow's groups, as the categories a case is drawn from. */
+const CATEGORY_OF: Record<SelectionKey, DrawCategory> = {
+    exp: "tp",
+    open: "fn",
+    fp: "fp",
+    tn: "tn",
+};
+
+const DRAW_COLORS: Record<DrawCategory, string> = {
+    tp: COLORS.explainedCorrectly,
+    fn: COLORS.toBeExplained,
+    fp: COLORS.falsePositives,
+    // The band's own grey is too light to carry white text.
+    tn: "#6e7781",
+};
+
+/** Where each drawable tile sits in the three-column grid, for the caret. */
+const TILE_COLUMN: Partial<Record<DrawCategory, number>> = { fn: 0, tp: 1, fp: 2 };
 
 /** Which tiles a given selection feeds into; everything else dims. */
 function isLit(tile: "open" | "exp" | "fp" | "precision" | "recall" | "rules",
@@ -24,12 +45,19 @@ interface TileProps {
     lit: boolean;
     onSelect?: () => void;
     pressed?: boolean;
+    /** Draw mode: a click on this tile hands out a case. */
+    drawable?: boolean;
+    /** Draw mode, but nothing to draw here. */
+    empty?: boolean;
 }
 
-function Tile({ label, value, color, lit, onSelect, pressed }: TileProps) {
+function Tile({ label, value, color, lit, onSelect, pressed, drawable, empty }: TileProps) {
     const body: ReactNode = (
         <>
-            <span className="es-tile-label">{label}</span>
+            <span className="es-tile-label">
+                {label}
+                {drawable ? <DiceIcon size={12} /> : null}
+            </span>
             <span className="es-tile-value" style={{ color }}>
                 {value}
             </span>
@@ -47,9 +75,11 @@ function Tile({ label, value, color, lit, onSelect, pressed }: TileProps) {
     return (
         <button
             type="button"
-            className="es-tile es-tile--button"
+            className={`es-tile es-tile--button${drawable ? " es-tile--draw" : ""}`}
             style={style}
             aria-pressed={pressed}
+            disabled={empty}
+            title={drawable ? "Draw a case from this group" : undefined}
             onClick={onSelect}
         >
             {body}
@@ -79,8 +109,51 @@ export default function ExplanationStatus({
     const [selection, setSelection] = useState<SelectionKey | null>(null);
     const [toScale, setToScale] = useState(false);
 
-    const toggle = (key: SelectionKey) =>
-        setSelection((current) => (current === key ? null : key));
+    const [drill, setDrill] = useState(false);
+    const draw = useCaseDraw();
+
+    const counts: Record<SelectionKey, number> = {
+        open: data.casesTbe,
+        exp: data.expTp,
+        fp: data.expFp,
+        tn: data.expTn,
+    };
+
+    // One click, two meanings: outside draw mode it highlights a group, in draw
+    // mode it also hands out a case of it. The highlight is kept either way, so
+    // the group a drawn case belongs to is the one lit up.
+    const toggle = (key: SelectionKey) => {
+        if (!drill) {
+            setSelection((current) => (current === key ? null : key));
+            return;
+        }
+        if (counts[key] === 0) return;
+        setSelection(key);
+        draw.draw(CATEGORY_OF[key]);
+    };
+
+    const toggleDrill = () => {
+        if (drill) {
+            draw.close();
+            setSelection(null);
+        }
+        setDrill((on) => !on);
+    };
+
+    const clearSelection = () => {
+        draw.close();
+        setSelection(null);
+    };
+
+    const closeDraw = () => {
+        draw.close();
+        setSelection(null);
+    };
+
+    const tileDraw = (key: SelectionKey) =>
+        drill ? { drawable: counts[key] > 0, empty: counts[key] === 0 } : {};
+
+    const caretColumn = draw.target ? TILE_COLUMN[draw.target.category] : undefined;
 
     return (
         <div className="es-root">
@@ -101,14 +174,26 @@ export default function ExplanationStatus({
                         type="button"
                         className="es-pill"
                         disabled={selection === null}
-                        onClick={() => setSelection(null)}
+                        onClick={clearSelection}
                     >
                         clear selection
                     </button>
+                    <DrillToggle
+                        on={drill}
+                        onToggle={toggleDrill}
+                        disabled={data.totalCases === 0}
+                        hint="a group — a band or a tile —"
+                    />
                 </div>
             </div>
 
-            <Flow data={data} toScale={toScale} selection={selection} onSelect={toggle} />
+            {drill ? (
+                <div className="es-draw-hint">
+                    Draw mode: click a group — a band or a tile — to get the id of one case in it.
+                </div>
+            ) : null}
+
+            <Flow data={data} toScale={toScale} selection={selection} onSelect={toggle} drill={drill} />
 
             <div className="es-tiles">
                 <Tile
@@ -118,6 +203,7 @@ export default function ExplanationStatus({
                     lit={isLit("open", selection)}
                     pressed={selection === "open"}
                     onSelect={() => toggle("open")}
+                    {...tileDraw("open")}
                 />
                 <Tile
                     label="Explained (TP)"
@@ -126,6 +212,7 @@ export default function ExplanationStatus({
                     lit={isLit("exp", selection)}
                     pressed={selection === "exp"}
                     onSelect={() => toggle("exp")}
+                    {...tileDraw("exp")}
                 />
                 <Tile
                     label="Wrongly claimed (FP)"
@@ -134,7 +221,23 @@ export default function ExplanationStatus({
                     lit={isLit("fp", selection)}
                     pressed={selection === "fp"}
                     onSelect={() => toggle("fp")}
+                    {...tileDraw("fp")}
                 />
+                {/* Sits in the grid, right under the row of tiles it belongs to. */}
+                {draw.target ? (
+                    <DrawPopover
+                        draw={{ ...draw, close: closeDraw }}
+                        color={DRAW_COLORS[draw.target.category]}
+                        className="es-draw-pop"
+                    >
+                        {caretColumn === undefined ? null : (
+                            <span
+                                className="es-draw-caret"
+                                style={{ left: `${((2 * caretColumn + 1) / 6) * 100}%` }}
+                            />
+                        )}
+                    </DrawPopover>
+                ) : null}
                 <Tile
                     label="Precision"
                     value={formatPercent(data.precision)}

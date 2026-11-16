@@ -1,5 +1,6 @@
 import styles from "./styles.css";
 import ExplanationStatus from "./ExplanationStatus";
+import { CaseDrawStyles } from "../common/caseDraw";
 
 interface AppProps {
     casesTbe: unknown;
@@ -13,6 +14,7 @@ export default function App({ casesTbe, expTp, expFp, expTn, storedRules }: AppP
     return (
         <>
             <style>{styles}</style>
+            <CaseDrawStyles />
             <ExplanationStatus
                 casesTbe={casesTbe}
                 expTp={expTp}

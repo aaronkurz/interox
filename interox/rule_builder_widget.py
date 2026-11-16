@@ -7,6 +7,7 @@ from rulelearn_ri.trxf.core.predicate import Predicate, Relation
 from rulelearn_ri.trxf.core.feature import Feature
 from rulelearn_ri.trxf.core.dnf_ruleset import Conjunction
 from rulelearn_ri.algorithms.ripper.single_rule import optimize_single_rule
+from .case_draw import CaseDrawMixin
 from .helpers import conjunction_to_conditions, is_usable_feature_name
 
 
@@ -19,7 +20,7 @@ _NUM_RELATIONS = {
 }
 
 
-class RuleBuilderWidget(anywidget.AnyWidget): # pylint: disable=too-many-instance-attributes, abstract-method
+class RuleBuilderWidget(CaseDrawMixin, anywidget.AnyWidget): # pylint: disable=too-many-instance-attributes, abstract-method
     """An interactive widget for *building* a rule from scratch.
 
     The user drags or clicks attributes (ranked by tree-based importance) into
@@ -39,6 +40,9 @@ class RuleBuilderWidget(anywidget.AnyWidget): # pylint: disable=too-many-instanc
     "Frontend-owned request traits"). ``loaded_rule`` goes the other way: it is
     how an existing rule is put on the canvas from Python (see
     :meth:`load_conditions`).
+
+    A case can be drawn from each of the four counts of the rule evaluated last
+    (see `CaseDrawMixin`).
     """
     _esm = pathlib.Path(__file__).parent / "static" / "rule_builder.js"
 
@@ -70,7 +74,7 @@ class RuleBuilderWidget(anywidget.AnyWidget): # pylint: disable=too-many-instanc
         self._handled_optimize_id = None
         self._handled_store_trigger = -1
 
-    def set_context(self, case_log, outcome, store_callback=None):
+    def set_context(self, case_log, outcome, store_callback=None, on_case_open=None):
         """Provide the data the widget evaluates and stores rules against.
 
         Args:
@@ -78,10 +82,31 @@ class RuleBuilderWidget(anywidget.AnyWidget): # pylint: disable=too-many-instanc
             outcome: Boolean target label per case (``True`` == positive).
             store_callback: Called with the assembled ``Conjunction`` when the
                 user stores the rule.
+            on_case_open: Called as ``on_case_open(case_id)`` when the user asks
+                to open a case drawn from the evaluated rule's counts.
         """
         self._case_log = case_log
         self._outcome = outcome
         self._store_callback = store_callback
+        self.set_draw_context(self._evaluated_case_ids, on_case_open=on_case_open)
+
+    def _evaluated_case_ids(self, category, _iox_rule_id=None):
+        """Case ids behind one count of the rule evaluated last.
+
+        Reads the conditions off ``eval_request``, as storing does: that is the
+        rule the counts on screen belong to.
+        """
+        conditions = self.eval_request.get('conditions', [])
+        if not conditions or self._case_log is None or self._outcome is None:
+            raise ValueError('Evaluate the rule before drawing a case.')
+        explanation = self._conditions_mask(conditions)
+        masks = {
+            'tp': explanation & self._outcome,
+            'fp': explanation & ~self._outcome,
+            'fn': ~explanation & self._outcome,
+            'tn': ~explanation & ~self._outcome,
+        }
+        return self._case_log.index[masks[category].to_numpy()]
 
     def load_conditions(self, conditions, label: str = '') -> None:
         """Put an existing rule on the canvas, replacing what is there.
@@ -203,6 +228,8 @@ class RuleBuilderWidget(anywidget.AnyWidget): # pylint: disable=too-many-instanc
         if request_id is not None and request_id == self._handled_eval_id:
             return
         self._handled_eval_id = request_id
+        # The counts are about to change, and with them the cases behind them.
+        self._reset_draws()
 
         if len(self._case_log) == 0:
             self._eval_counter += 1

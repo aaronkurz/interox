@@ -4,6 +4,7 @@ import RuleRow from "./RuleRow";
 import { normalizeRule } from "./data";
 import { FEATURE_PALETTE } from "./tokens";
 import type { ActionKind, RawRule, TableMode, Toast } from "./types";
+import { DrillToggle, useCaseDraw } from "../common/caseDraw";
 
 interface RulesetTableProps {
     rules: RawRule[];
@@ -41,6 +42,13 @@ export default function RulesetTable({
     const [minPrecision, setMinPrecision] = useState(0);
     const [minRecall, setMinRecall] = useState(0);
     const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
+    const [drill, setDrill] = useState(false);
+    const draw = useCaseDraw();
+
+    const toggleDrill = () => {
+        if (drill) draw.close();
+        setDrill((on) => !on);
+    };
 
     const normalizedRules = useMemo(
         () => rules.map((r, i) => normalizeRule(r, i)),
@@ -103,6 +111,12 @@ export default function RulesetTable({
                         {aligned ? "Aligned" : "Unaligned"} view
                     </span>
                 </label>
+                <DrillToggle
+                    on={drill}
+                    onToggle={toggleDrill}
+                    disabled={rules.length === 0}
+                    hint="a rule's TP, FP or FN"
+                />
                 {toast && (
                     <button
                         type="button"
@@ -208,6 +222,7 @@ export default function RulesetTable({
                                 onToggleNote={() => togglePanel(rule.ioxRuleId, "note")}
                                 onCancel={closePanel}
                                 onAction={handleAction}
+                                draw={drill ? draw : null}
                             />
                         ))
                     )}

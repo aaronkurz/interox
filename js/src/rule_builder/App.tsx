@@ -5,6 +5,7 @@ import RailSplitter, { RAIL_DEFAULT_WIDTH } from "./RailSplitter";
 import RangeHist from "./RangeHist";
 import CatBars from "./CatBars";
 import EvalFooter from "./EvalFooter";
+import { CaseDrawStyles } from "../common/caseDraw";
 import ImpactPanel, { IMPACT_HELP } from "./ImpactPanel";
 import { TypeBadge, HistLegend, InfoTip } from "./atoms";
 import { rangeReadout, numBounds, predKey } from "./engine";
@@ -115,6 +116,7 @@ export default function App({
     return (
         <>
             <style>{styles}</style>
+            <CaseDrawStyles />
             <div className="rb-root rb-v2">
                 <div className="rb-header">
                     <span className="rb-title">{title}</span>

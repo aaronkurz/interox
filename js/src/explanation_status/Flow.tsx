@@ -56,9 +56,11 @@ interface FlowProps {
     toScale: boolean;
     selection: SelectionKey | null;
     onSelect: (key: SelectionKey) => void;
+    /** Draw mode: a click on a band hands out a case of it. */
+    drill?: boolean;
 }
 
-export default function Flow({ data, toScale, selection, onSelect }: FlowProps) {
+export default function Flow({ data, toScale, selection, onSelect, drill = false }: FlowProps) {
     const g = computeGeometry(data, toScale);
     const stubId = `${useId()}-stub`;
 
@@ -72,7 +74,7 @@ export default function Flow({ data, toScale, selection, onSelect }: FlowProps) 
                   role: "button",
                   tabIndex: 0,
                   "aria-pressed": selection === key,
-                  "aria-label": `${BAND_LABELS[key]}: ${formatCount(count(key))}`,
+                  "aria-label": `${drill ? "Draw a case: " : ""}${BAND_LABELS[key]}: ${formatCount(count(key))}`,
                   onKeyDown: (event: KeyboardEvent<SVGElement>) => {
                       if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();

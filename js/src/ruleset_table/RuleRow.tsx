@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { roundPredicate } from "./data";
 import { TOKENS } from "./tokens";
 import MetricCell from "./MetricCell";
-import SplitGlyphCell from "./SplitGlyphCell";
+import SplitGlyphCell, { DRAW_COLORS } from "./SplitGlyphCell";
+import { DrawPopover } from "../common/caseDraw";
+import type { CaseDraw } from "../common/caseDraw";
 import type { ActionKind, NormalizedRule, TableMode } from "./types";
 
 interface RuleRowProps {
@@ -18,6 +20,8 @@ interface RuleRowProps {
     onToggleNote: () => void;
     onCancel: () => void;
     onAction: (kind: ActionKind, ioxRuleId: number, note: string) => void;
+    /** Set in draw mode: the row's counts hand out cases. */
+    draw: CaseDraw | null;
 }
 
 function PlusIcon() {
@@ -69,6 +73,7 @@ export default function RuleRow({
     onToggleNote,
     onCancel,
     onAction,
+    draw,
 }: RuleRowProps) {
     const isStored = mode === "stored";
 
@@ -212,6 +217,21 @@ export default function RuleRow({
 
     const hasAnnotation = rule.annotation.trim() !== "";
 
+    // The case drawn from one of this row's counts, right under the row.
+    const drawTarget = draw && draw.target?.ruleId === rule.ioxRuleId ? draw.target : null;
+    const drawPanel = draw && drawTarget && drawTarget.category !== "tn" && (
+        <tr>
+            <td className="rs-draw-cell" colSpan={colSpan}>
+                <DrawPopover
+                    draw={draw}
+                    color={DRAW_COLORS[drawTarget.category]}
+                    scope={`for ${rule.ruleName}`}
+                    className="rs-draw-pop"
+                />
+            </td>
+        </tr>
+    );
+
     const notePanel = isStored && isNoteOpen && (
         <tr>
             <td className="rs-panel-cell" colSpan={colSpan}>
@@ -280,13 +300,14 @@ export default function RuleRow({
                 <td className="rs-rule-name">{rule.ruleName.replace(/-/g, '-\u200B')}</td>
                 <MetricCell value={rule.precision} color={TOKENS.precision} />
                 <MetricCell value={rule.recall} color={TOKENS.recall} />
-                <SplitGlyphCell rule={rule} />
+                <SplitGlyphCell rule={rule} draw={draw} />
                 {aligned ? featureCells : (
                     <td className="rs-predicates-cell">
                         {predicateTags.length > 0 ? predicateTags : <span className="rs-empty-cell">&mdash;</span>}
                     </td>
                 )}
             </tr>
+            {drawPanel}
             {actionPanel}
             {notePanel}
         </>

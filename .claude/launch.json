@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sepsis-notebook-draw",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /home/aaron/Developer/interox-notebook-sepsis && exec uv run --with-editable /home/aaron/Developer/interox/.claude/worktrees/case-drill-down-widgets-7b1257 marimo run rule_induction_sepsis_marimo_iox.py --headless --no-token --port ${PORT:-2733}"],
+      "port": 2733
+    }
+  ]
+}
