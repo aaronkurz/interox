@@ -1,5 +1,5 @@
 import { useId } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { COLORS, BAND_OPACITY, DIMMED } from "./tokens";
 import { formatCount } from "./data";
 import {
@@ -56,27 +56,41 @@ interface FlowProps {
     toScale: boolean;
     selection: SelectionKey | null;
     onSelect: (key: SelectionKey) => void;
+    /** Draw mode: a click on a band hands out a case of it. */
+    drill?: boolean;
 }
 
-export default function Flow({ data, toScale, selection, onSelect }: FlowProps) {
+export default function Flow({ data, toScale, selection, onSelect, drill = false }: FlowProps) {
     const g = computeGeometry(data, toScale);
     const stubId = `${useId()}-stub`;
 
     // SVG shapes are not focusable on their own; the case log column carries the
     // keyboard affordance so each group has exactly one tab stop.
     const handles = (key: SelectionKey, focusable: boolean) => ({
-        className: "es-band",
-        onClick: () => onSelect(key),
+        className: `es-band${drill && selection === key ? " es-band--drawn" : ""}`,
+        "data-draw-category": key,
+        onClick: (event: MouseEvent<SVGElement>) => {
+            if (drill && count(key) === 0) return;
+            if (drill && !focusable) {
+                // Ribbons and prediction bands have no tab stop of their own.
+                // Keep focus on this group's keyboard handle so Escape stays local.
+                event.currentTarget.ownerSVGElement
+                    ?.querySelector<SVGElement>(`[role="button"][data-draw-category="${key}"]`)
+                    ?.focus();
+            }
+            onSelect(key);
+        },
         ...(focusable
             ? {
                   role: "button",
-                  tabIndex: 0,
+                  tabIndex: drill && count(key) === 0 ? -1 : 0,
+                  "aria-disabled": drill && count(key) === 0 ? true : undefined,
                   "aria-pressed": selection === key,
-                  "aria-label": `${BAND_LABELS[key]}: ${formatCount(count(key))}`,
+                  "aria-label": `${drill ? "Draw a case: " : ""}${BAND_LABELS[key]}: ${formatCount(count(key))}`,
                   onKeyDown: (event: KeyboardEvent<SVGElement>) => {
                       if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          onSelect(key);
+                          if (!drill || count(key) > 0) onSelect(key);
                       }
                   },
               }
@@ -91,16 +105,16 @@ export default function Flow({ data, toScale, selection, onSelect }: FlowProps) 
     }
 
     const op = {
-        exp: bandOpacity("exp", selection),
-        open: bandOpacity("open", selection),
-        fp: bandOpacity("fp", selection),
-        tn: bandOpacity("tn", selection),
+        exp: bandOpacity("exp", drill ? null : selection),
+        open: bandOpacity("open", drill ? null : selection),
+        fp: bandOpacity("fp", drill ? null : selection),
+        tn: bandOpacity("tn", drill ? null : selection),
     };
     const tnFill = g.clipped ? `url(#${stubId})` : COLORS.leftAlone;
 
     /** Text follows its band: a readout for a dimmed group dims with it. */
     const textOpacity = (...keys: SelectionKey[]) =>
-        selection === null || keys.includes(selection) ? 1 : DIMMED;
+        drill || selection === null || keys.includes(selection) ? 1 : DIMMED;
 
     const ruleWord = data.storedRules === 1 ? "rule" : "rules";
     const disjunction =
@@ -300,7 +314,7 @@ export default function Flow({ data, toScale, selection, onSelect }: FlowProps) 
             {/* The rule set itself: a funnel while it claims something, an
                 empty lane the cases pass straight through while it does not. */}
             {g.empty ? (
-                <>
+                <g data-cd-context="">
                     <text
                         className="es-flow-box-caption"
                         x={X_BOX + BOX_W / 2}
@@ -330,9 +344,9 @@ export default function Flow({ data, toScale, selection, onSelect }: FlowProps) 
                     >
                         {emptyNote}
                     </text>
-                </>
+                </g>
             ) : (
-                <>
+                <g data-cd-context="">
                     <rect
                         x={X_BOX}
                         y={g.boxY}
@@ -352,7 +366,7 @@ export default function Flow({ data, toScale, selection, onSelect }: FlowProps) 
                         {formatCount(data.storedRules)} {ruleWord} · claims{" "}
                         {formatCount(data.expTp + data.expFp)}
                     </text>
-                </>
+                </g>
             )}
 
             {/* Prediction column. */}

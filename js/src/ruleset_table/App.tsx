@@ -1,5 +1,6 @@
 import styles from "./styles.css";
 import RulesetTable from "./RulesetTable";
+import { CaseDrawStyles } from "../common/caseDraw";
 import type { ActionKind, RawRule, TableMode, Toast } from "./types";
 
 interface AppProps {
@@ -24,6 +25,7 @@ export default function App({
     return (
         <>
             <style>{styles}</style>
+            <CaseDrawStyles />
             <RulesetTable
                 rules={rules}
                 features={features}

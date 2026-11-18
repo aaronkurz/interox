@@ -21,6 +21,11 @@ Start here
 - `InterOX.store_rule_by_id` / `InterOX.remove_rule_by_id` — change the stored
   ruleset; both re-induce suggestions.
 
+The status widget, the ruleset tables and the rule builder each have a *Draw a
+case* mode: click a count to get the id of one case behind it. Pass
+`on_case_open` to their getters to receive a drawn case in the notebook, e.g. to
+show it in a case view.
+
 A rule is addressed by its **stable id**, which survives re-induction and
 reordering: prefer the `*_by_id` methods over the positional ones of the same
 name. `InterOX.get_stored_rule_options` maps rule names to those ids.

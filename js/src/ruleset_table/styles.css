@@ -233,6 +233,12 @@
     gap: 12px;
 }
 
+/* Let draw guidance move onto another line instead of shrinking to one word. */
+[data-cd-mode] .rs-toggle-bar,
+[data-cd-mode] .rs-toggle-bar-left {
+    flex-wrap: wrap;
+}
+
 /* One-shot outcome of an action, published by Python. It sits beside the view
    toggle rather than floating over the table, so it never covers a rule, and
    clicking it dismisses it early. */
@@ -605,4 +611,28 @@
     color: var(--rs-subtle);
     font-style: italic;
     max-width: 640px;
+}
+
+/* Draw mode: the counts are buttons, and a drawn case sits under its rule. */
+.rs-glyph-cell--draw {
+    gap: 3px;
+}
+
+.rs-glyph-cell--draw .rs-glyph-container {
+    width: 150px;
+}
+
+.rs-glyph-draw {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: auto;
+    min-width: 66px;
+    padding: 1px 5px;
+    white-space: nowrap;
+}
+
+.rs-widget {
+    position: relative;
 }

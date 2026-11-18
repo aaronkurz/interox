@@ -8,7 +8,10 @@ As in `test_rule_edit_transfer`, the widget is driven without a kernel: assign
 `eval_request` and read `eval_result`.
 """
 # pylint: disable=protected-access
+import pytest
+
 from interox import InterOX
+from interox.rule_builder_widget import RuleBuilderWidget
 
 
 def evaluate(builder, conditions, request_id=1) -> dict:
@@ -33,3 +36,19 @@ def test_counts_partition_the_unclaimed_cases(case_log, outcome, rule_age_and_de
 def test_the_whole_log_is_not_called_unclaimed(case_log, outcome):
     builder = InterOX(outcome, case_log).get_rule_builder(scope='all')
     assert builder.pool_label == 'cases'
+
+
+@pytest.mark.parametrize('empty', [False, True])
+def test_evaluation_replies_identify_the_request_not_just_the_result(case_log, outcome, empty):
+    """A delayed reply must not be assigned to a newer rule on the canvas."""
+    builder = RuleBuilderWidget()
+    builder.set_context(
+        case_log.iloc[:0] if empty else case_log,
+        outcome.iloc[:0] if empty else outcome,
+    )
+    result = evaluate(builder, [{'attr': 'age', 'op': '>=', 'value': 40}], request_id=42)
+    assert result.get('request_id') == 42
+    assert result['eval_id'] == 1
+    result = evaluate(builder, [{'attr': 'age', 'op': '>=', 'value': 70}], request_id=87)
+    assert result.get('request_id') == 87
+    assert result['eval_id'] == 2

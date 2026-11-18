@@ -14,5 +14,12 @@ build/
 # Frontend
 js/node_modules/
 
+# Personal agent config (launch configurations carry machine-local paths)
+.claude/
+
+# Local working output: Archify diagrams and screenshots taken for PRs
+.archify/
+pr-screenshots/
+
 # NOTE: interox/static/*.js is committed on purpose -- these are the built
 # bundles the widgets load at import, so `pip install interox` needs no Node.

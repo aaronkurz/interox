@@ -1,0 +1,226 @@
+/* Shared by every widget that can draw a case (common/caseDraw.tsx). */
+
+/* Dim only unrelated regions, never an ancestor of a target or popover. */
+[data-cd-mode] [data-cd-context] {
+    opacity: 0.32;
+}
+
+.cd-hint {
+    font-size: 12px;
+    color: #57606a;
+}
+
+.cd-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 11px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #57606a;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cd-toggle:hover:not(:disabled) {
+    border-color: #57606a;
+    color: #24292f;
+}
+
+.cd-toggle:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.cd-toggle--on,
+.cd-toggle--on:hover:not(:disabled) {
+    border-color: #0969da;
+    background: #ddf4ff;
+    color: #0550ae;
+    font-weight: 600;
+}
+
+.cd-toggle--compact {
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    justify-content: center;
+}
+
+.cd-dice {
+    flex: none;
+}
+
+/* A count that hands out a case when clicked. */
+.cd-target {
+    font-family: inherit;
+    border: 1px dashed #afb8c1;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.cd-target:hover:not(:disabled) {
+    border-color: #0969da;
+    background: #f1f8ff;
+}
+
+.cd-target:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.cd-target--on,
+.cd-target--on:hover:not(:disabled) {
+    border-color: #0969da;
+    background: #ddf4ff;
+}
+
+.cd-pop {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    box-sizing: border-box;
+    padding: 8px 10px 8px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 6px 18px rgba(31, 35, 40, 0.12);
+    font-size: 12px;
+    color: #24292f;
+    white-space: normal;
+    text-align: left;
+}
+
+.cd-chip {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+    border-radius: 10px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+.cd-id {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 16px;
+    font-weight: 600;
+    user-select: all;
+    overflow-wrap: anywhere;
+}
+
+.cd-pos {
+    color: #57606a;
+}
+
+.cd-tag {
+    font-size: 11px;
+    color: #57606a;
+    border: 1px solid #d0d7de;
+    border-radius: 10px;
+    padding: 1px 7px;
+    white-space: nowrap;
+}
+
+.cd-error {
+    color: #9a6700;
+}
+
+.cd-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.cd-btn {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    font-family: inherit;
+    font-size: 12px;
+    color: #24292f;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cd-btn:hover:not(:disabled) {
+    border-color: #57606a;
+}
+
+.cd-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.cd-close {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #57606a;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.cd-close:hover {
+    background: #f6f8fa;
+    color: #24292f;
+}
+
+/* A popover laid over its widget (FloatingDrawPopover): the container is
+   positioned, the popover is placed next to the target it was drawn from. */
+.cd-pop--float {
+    position: absolute;
+    z-index: 40;
+    width: max-content;
+    max-width: min(760px, calc(100% - 16px));
+    animation: cd-pop-in 140ms ease;
+}
+
+.cd-caret {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    transform: rotate(45deg);
+}
+
+.cd-pop--below .cd-caret {
+    top: -7px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.cd-pop--above .cd-caret {
+    bottom: -7px;
+    border-left: none;
+    border-top: none;
+}
+
+@keyframes cd-pop-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cd-pop--float {
+        animation: none;
+    }
+}

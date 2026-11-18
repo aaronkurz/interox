@@ -20,7 +20,7 @@ if you are changing the fork itself.
 
 To try a change in a real notebook, point a notebook project at this checkout
 instead of PyPI, e.g. from
-[interox-nodebook-sepsis](https://github.com/aaronkurz/interox-nodebook-sepsis):
+[interox-notebook-sepsis](https://github.com/aaronkurz/interox-notebook-sepsis):
 
 ```bash
 uv add --editable ../interox     # revert with: uv add interox
@@ -62,6 +62,9 @@ function on teardown.
 
 Every summary the frontend draws — histograms, frequency bars, metrics — is
 computed in Python and arrives as a trait. The case log itself is never sent.
+The one thing that crosses over per case is an id: in *Draw a case* mode a
+widget asks Python for one case behind a count and gets back that case's id
+(see "Drawing a case" below).
 
 ### Frontend-owned request traits
 
@@ -73,6 +76,29 @@ the replay into a spurious second request, and, because the replay runs inside t
 creating cell's execution context, would also suppress that cell's reactive
 re-run. Every observer therefore ignores any request whose id it has already
 handled.
+
+### Drawing a case
+
+The status widget, the ruleset tables and the rule builder all show counts of
+cases. `CaseDrawMixin` (`interox/case_draw.py`) lets each of them hand out one
+case behind such a count, and `js/src/common/caseDraw.tsx` is its frontend half:
+the `useCaseDraw` hook, the *Draw a case* toggle and the popover.
+
+| Trait | Owner | Content |
+|---|---|---|
+| `draw_request` | frontend | `{request_id, kind: 'draw' \| 'open', category, iox_rule_id?}` |
+| `draw_result` | Python | `{request_id, category, iox_rule_id, case_id, position, total, shared}` or `{request_id, error}` |
+| `can_open_case` | Python | whether an `on_case_open` callback is registered |
+
+The widget is given a resolver, `resolve(category, iox_rule_id)`, which is only
+called when a category is first drawn from. Its cases are shuffled once and then
+walked in that order, so *Another* never repeats a case before all of them have
+come up. Widgets are re-created whenever `InterOX` state changes, so a cached
+order cannot outlive the cases it was built from; the rule builder, whose rule
+changes without a re-creation, drops its orders on every evaluation.
+
+`kind: 'open'` carries no id: Python calls `on_case_open` with the case it drew
+last, so the frontend cannot ask for a case it was never shown.
 
 ### One widget acting on another
 
@@ -202,6 +228,11 @@ Frontend, from `js/`:
 | `npm run build` | One-shot, minified bundle of all widgets |
 | `npm run dev` | Watch mode — rebuilds on file changes |
 | `npm run typecheck` | Run `tsc --noEmit` to validate types |
+
+Evaluation results in the rule builder echo the frontend `request_id` as well
+as carrying their own `eval_id`. The frontend accepts only the reply to its
+latest pending request, so overlapping evaluations cannot associate old counts
+with a newer rule or enable drawing from them.
 
 Python, from the repo root:
 

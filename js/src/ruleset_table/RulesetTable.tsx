@@ -4,6 +4,8 @@ import RuleRow from "./RuleRow";
 import { normalizeRule } from "./data";
 import { FEATURE_PALETTE } from "./tokens";
 import type { ActionKind, RawRule, TableMode, Toast } from "./types";
+import { DrillToggle, FloatingDrawPopover, useCaseDraw, useDrawMode } from "../common/caseDraw";
+import { DRAW_COLORS } from "./SplitGlyphCell";
 
 interface RulesetTableProps {
     rules: RawRule[];
@@ -41,6 +43,14 @@ export default function RulesetTable({
     const [minPrecision, setMinPrecision] = useState(0);
     const [minRecall, setMinRecall] = useState(0);
     const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
+    const draw = useCaseDraw();
+    const drawMode = useDrawMode(draw.close, rules.length > 0);
+    const drill = drawMode.on;
+
+    const toggleDrill = () => {
+        setOpenPanel(null);
+        drawMode.toggle();
+    };
 
     const normalizedRules = useMemo(
         () => rules.map((r, i) => normalizeRule(r, i)),
@@ -62,7 +72,7 @@ export default function RulesetTable({
     }, [features]);
 
     const featureHeaders = features.map((f) => (
-        <th key={f}>{f}</th>
+        <th key={f} data-cd-context="">{f}</th>
     ));
 
     const featureSummaryRow = features.map((f) => (
@@ -72,7 +82,7 @@ export default function RulesetTable({
     // Columns: action + Rule + Precision + Recall + TP/FP/FN + (features | Predicates)
     const totalCols = 1 + 4 + (aligned ? features.length : 1);
 
-    const featureHeaderCells = aligned ? featureHeaders : <th>Predicates</th>;
+    const featureHeaderCells = aligned ? featureHeaders : <th data-cd-context="">Predicates</th>;
 
     const togglePanel = (ioxRuleId: number, panelMode: PanelMode) => {
         setOpenPanel((prev) =>
@@ -92,7 +102,7 @@ export default function RulesetTable({
     const toolbar = (
         <div className="rs-toggle-bar">
             <div className="rs-toggle-bar-left">
-                <label className="rs-toggle">
+                <label className="rs-toggle" data-cd-context="">
                     <input
                         type="checkbox"
                         checked={aligned}
@@ -103,10 +113,18 @@ export default function RulesetTable({
                         {aligned ? "Aligned" : "Unaligned"} view
                     </span>
                 </label>
+                <DrillToggle
+                    on={drill}
+                    onToggle={toggleDrill}
+                    disabled={rules.length === 0}
+                    hint="a rule's TP, FP or FN"
+                />
+                {drill ? <span className="cd-hint">Click a rule’s TP, FP or FN · Esc to exit</span> : null}
                 {toast && (
                     <button
                         type="button"
                         className={`rs-toast${toast.level === "warn" ? " rs-toast-warn" : ""}`}
+                        data-cd-context=""
                         title="Dismiss"
                         onClick={onDismissToast}
                     >
@@ -114,7 +132,7 @@ export default function RulesetTable({
                     </button>
                 )}
             </div>
-            <div className="rs-toggle-bar-right">
+            <div className="rs-toggle-bar-right" data-cd-context="">
                 <div className="rs-filter-group">
                     <label className="rs-filter-label">Precision &ge;</label>
                     <input
@@ -155,21 +173,28 @@ export default function RulesetTable({
             : "No suggested rules remain."
         : "No rules match the current filters.";
 
+    // The rule a case was drawn from, while it is still in the table.
+    const drawnRule = draw.target && draw.target.category !== "tn"
+        ? filteredRules.find((r) => r.ioxRuleId === draw.target?.ruleId) ?? null
+        : null;
+
     return (
-        <div>
+        // Positioned, so the popover floats over the table instead of inside
+        // it, where the table's own horizontal scroll would clip it.
+        <div className="rs-widget" {...drawMode.rootProps}>
             {toolbar}
             <table className="rs-root">
                 <thead>
                     <tr>
-                        <th className="rs-action-col" />
-                        <th>Rule</th>
-                        <th>Precision</th>
-                        <th>Recall</th>
+                        <th className="rs-action-col" data-cd-context="" />
+                        <th data-cd-context="">Rule</th>
+                        <th data-cd-context="">Precision</th>
+                        <th data-cd-context="">Recall</th>
                         <th>TP / FP / FN</th>
                         {featureHeaderCells}
                     </tr>
                     {aligned && (
-                        <tr className="rs-summary-row">
+                        <tr className="rs-summary-row" data-cd-context="">
                             <th className="rs-summary-spacer rs-action-col" />
                             <th className="rs-summary-spacer" />
                             <th className="rs-summary-spacer" />
@@ -208,11 +233,21 @@ export default function RulesetTable({
                                 onToggleNote={() => togglePanel(rule.ioxRuleId, "note")}
                                 onCancel={closePanel}
                                 onAction={handleAction}
+                                draw={drill ? draw : null}
                             />
                         ))
                     )}
                 </tbody>
             </table>
+            {draw.target && drawnRule ? (
+                <FloatingDrawPopover
+                    draw={draw}
+                    color={DRAW_COLORS[draw.target.category as keyof typeof DRAW_COLORS]}
+                    scope={`for ${drawnRule.ruleName}`}
+                    containerRef={drawMode.rootProps.ref}
+                    anchors={[".cd-target--on"]}
+                />
+            ) : null}
         </div>
     );
 }

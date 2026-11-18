@@ -14,6 +14,30 @@ introduced it.
 
 ---
 
+### 2026-11-16 — A widget hands out cases one id at a time, drawn in Python
+
+**Decision.** The status widget, the ruleset tables and the rule builder can
+each hand out a case behind one of their counts (*Draw a case*). The frontend
+asks for a category, Python picks the case, and one id crosses over per click.
+The widgets still never receive the case log or the list of ids in a category.
+Getting the case anywhere else is the notebook's business: the getters take an
+`on_case_open` callback, and interox itself has no case view.
+
+**Why.** Finding a case behind a number used to mean leaving the widget for the
+notebook's case browser and rebuilding the same filter by hand. Shipping every
+category's ids to the browser would have answered that too, but it sends the
+index of the whole case log with every widget, three times over, to serve a
+click most counts never get. And interox has no notion of events, so it cannot
+show a case itself (see 2026-10-16: `case_explorer.py` lives with the
+notebooks).
+
+**Consequence.** A draw costs a round trip, and the pool is resolved when a
+category is first clicked rather than when the widget is built. A drawn rule
+case goes through the public `get_data_*_rule_by_id` accessors, so it is by
+construction a case the notebook's browser lists under the same filter. The
+draw order is random and not seeded: which case comes up first is not
+reproducible across sessions.
+
 ### 2026-10-16 — interox is its own package, with the built widgets committed
 
 **Decision.** interox moved out of `interox-playground` into its own repo,

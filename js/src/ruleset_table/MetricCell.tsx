@@ -9,7 +9,7 @@ export default function MetricCell({ value, color }: MetricCellProps) {
     const pct = toPercent(value);
 
     return (
-        <td>
+        <td data-cd-context="">
             <div className="rs-metric">
                 <span className="rs-metric-val">{pct}</span>
                 <div className="rs-bar-container">

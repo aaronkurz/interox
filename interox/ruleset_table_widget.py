@@ -2,9 +2,10 @@
 import pathlib
 import anywidget
 import traitlets
+from .case_draw import CaseDrawMixin
 
 
-class RulesetTableWidget(anywidget.AnyWidget): # pylint: disable=abstract-method
+class RulesetTableWidget(CaseDrawMixin, anywidget.AnyWidget): # pylint: disable=abstract-method
     """A widget for displaying a DNF ruleset with contextual analysis in a
     table format.
 
@@ -25,6 +26,8 @@ class RulesetTableWidget(anywidget.AnyWidget): # pylint: disable=abstract-method
     observer ignores an ``action_id`` it has already handled (see
     DEVELOPMENT.md, "Frontend-owned request traits"); ``action_result`` travels
     the other way and carries the one-shot toast :meth:`notify` publishes.
+
+    A case can be drawn from each rule's TP, FP and FN (see `CaseDrawMixin`).
     """
     _esm = pathlib.Path(__file__).parent / "static" / "ruleset_table.js"
 

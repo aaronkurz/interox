@@ -28,6 +28,15 @@ iox.get_stored_ruleset()           # the rules you kept
 iox.get_rule_builder()             # build a rule from scratch
 ```
 
+The status widget, the ruleset tables and the rule builder have a *Draw a case*
+mode: switch it on and click a count to get the id of one case behind it. To
+receive such a case in the notebook, e.g. to show it in your own case view, pass
+a callback:
+
+```python
+iox.get_stored_ruleset(on_case_open=lambda case_id: ...)
+```
+
 Rendering needs a notebook that speaks [anywidget](https://anywidget.dev):
 marimo, Jupyter, VS Code. The API reference is generated from the docstrings:
 
@@ -36,7 +45,7 @@ uv run pdoc interox
 ```
 
 A complete walkthrough on a public event log lives in
-[interox-nodebook-sepsis](https://github.com/aaronkurz/interox-nodebook-sepsis).
+[interox-notebook-sepsis](https://github.com/aaronkurz/interox-notebook-sepsis).
 
 ## Requirements
 
