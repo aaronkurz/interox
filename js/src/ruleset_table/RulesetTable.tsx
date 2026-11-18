@@ -4,7 +4,8 @@ import RuleRow from "./RuleRow";
 import { normalizeRule } from "./data";
 import { FEATURE_PALETTE } from "./tokens";
 import type { ActionKind, RawRule, TableMode, Toast } from "./types";
-import { DrillToggle, useCaseDraw, useDrawMode } from "../common/caseDraw";
+import { DrillToggle, FloatingDrawPopover, useCaseDraw, useDrawMode } from "../common/caseDraw";
+import { DRAW_COLORS } from "./SplitGlyphCell";
 
 interface RulesetTableProps {
     rules: RawRule[];
@@ -172,8 +173,15 @@ export default function RulesetTable({
             : "No suggested rules remain."
         : "No rules match the current filters.";
 
+    // The rule a case was drawn from, while it is still in the table.
+    const drawnRule = draw.target && draw.target.category !== "tn"
+        ? filteredRules.find((r) => r.ioxRuleId === draw.target?.ruleId) ?? null
+        : null;
+
     return (
-        <div {...drawMode.rootProps}>
+        // Positioned, so the popover floats over the table instead of inside
+        // it, where the table's own horizontal scroll would clip it.
+        <div className="rs-widget" {...drawMode.rootProps}>
             {toolbar}
             <table className="rs-root">
                 <thead>
@@ -231,6 +239,15 @@ export default function RulesetTable({
                     )}
                 </tbody>
             </table>
+            {draw.target && drawnRule ? (
+                <FloatingDrawPopover
+                    draw={draw}
+                    color={DRAW_COLORS[draw.target.category as keyof typeof DRAW_COLORS]}
+                    scope={`for ${drawnRule.ruleName}`}
+                    containerRef={drawMode.rootProps.ref}
+                    anchors={[".cd-target--on"]}
+                />
+            ) : null}
         </div>
     );
 }

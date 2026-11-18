@@ -5,7 +5,7 @@
 // (`draw_request` -> `draw_result`, see interox/case_draw.py) and the id is
 // shown in a small popover, to be copied or handed to the notebook.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, ReactNode, SyntheticEvent } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode, Ref, RefObject, SyntheticEvent } from "react";
 import { useModelState } from "@anywidget/react";
 import styles from "./caseDraw.css";
 
@@ -304,11 +304,12 @@ interface DrawPopoverProps {
     scope?: string;
     className?: string;
     style?: CSSProperties;
+    popRef?: Ref<HTMLDivElement>;
     children?: ReactNode;
 }
 
 /** The drawn case: its id, where it stands in its category, and what to do with it. */
-export function DrawPopover({ draw, color, scope, className, style, children }: DrawPopoverProps) {
+export function DrawPopover({ draw, color, scope, className, style, popRef, children }: DrawPopoverProps) {
     const { target, pick, error } = draw;
     const [copied, setCopied] = useState<"yes" | "failed" | null>(null);
     const [opened, setOpened] = useState(false);
@@ -328,7 +329,7 @@ export function DrawPopover({ draw, color, scope, className, style, children }: 
     };
 
     return (
-        <div className={`cd-pop${className ? ` ${className}` : ""}`} style={style} role="status">
+        <div ref={popRef} className={`cd-pop${className ? ` ${className}` : ""}`} style={style} role="status">
             {children}
             <span className="cd-chip" style={{ background: color }}>
                 {CATEGORY_LABELS[target.category]}
@@ -395,5 +396,104 @@ export function DrawPopover({ draw, color, scope, className, style, children }: 
                 </button>
             </span>
         </div>
+    );
+}
+
+interface FloatPlacement {
+    left: number;
+    top: number;
+    caretLeft: number;
+    side: "below" | "above";
+}
+
+/** Gap between the anchor and the popover, and the popover's inset from the container's edges. */
+const FLOAT_GAP = 8;
+const FLOAT_INSET = 8;
+
+/**
+ * Where a floating popover goes: under its anchor (or over it when the
+ * container has no room below), centred on it but kept inside the container,
+ * with the caret still pointing at the anchor.
+ */
+function placeFloat(container: HTMLElement, anchor: Element, pop: HTMLElement): FloatPlacement {
+    const c = container.getBoundingClientRect();
+    const a = anchor.getBoundingClientRect();
+    const width = pop.offsetWidth;
+    const height = pop.offsetHeight;
+    // Line up with the container's content, not its border, where it is padded.
+    const style = getComputedStyle(container);
+    const insetLeft = Math.max(FLOAT_INSET, parseFloat(style.paddingLeft) || 0);
+    const insetRight = Math.max(FLOAT_INSET, parseFloat(style.paddingRight) || 0);
+    const anchorX = a.left + a.width / 2 - c.left;
+    const left = Math.max(insetLeft, Math.min(anchorX - width / 2, c.width - width - insetRight));
+    const below = a.bottom - c.top + FLOAT_GAP;
+    const above = a.top - c.top - FLOAT_GAP - height;
+    const flip = below + height > c.height && above >= 0;
+    return {
+        left,
+        top: flip ? above : below,
+        caretLeft: Math.max(14, Math.min(anchorX - left, width - 14)),
+        side: flip ? "above" : "below",
+    };
+}
+
+interface FloatingDrawPopoverProps extends Omit<DrawPopoverProps, "style" | "popRef" | "children"> {
+    /** The positioned element the popover floats in; it must not clip it. */
+    containerRef: RefObject<HTMLElement>;
+    /** Selectors for the clicked target, tried in order inside the container. */
+    anchors: string[];
+}
+
+/**
+ * The popover laid over the widget next to the target it was drawn from, so
+ * opening it never moves the widget's content.
+ */
+export function FloatingDrawPopover({ containerRef, anchors, className, ...rest }: FloatingDrawPopoverProps) {
+    const popRef = useRef<HTMLDivElement>(null);
+    const [placement, setPlacement] = useState<FloatPlacement | null>(null);
+    const anchorKey = anchors.join(",");
+
+    const update = useCallback(() => {
+        const container = containerRef.current;
+        const pop = popRef.current;
+        if (!container || !pop) return;
+        const anchor = anchorKey.split(",").map((sel) => container.querySelector(sel)).find((el) => el);
+        if (!anchor) return;
+        const next = placeFloat(container, anchor, pop);
+        setPlacement((prev) => (prev && prev.left === next.left && prev.top === next.top
+            && prev.caretLeft === next.caretLeft && prev.side === next.side ? prev : next));
+    }, [containerRef, anchorKey]);
+
+    // Re-place after every render: the id, an error or a wrapped line all
+    // change the popover's size, and a re-rendered target may have moved.
+    useLayoutEffect(update);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return undefined;
+        const observer = new ResizeObserver(update);
+        observer.observe(container);
+        if (popRef.current) observer.observe(popRef.current);
+        // Scroll does not bubble; capturing catches a scrolling table inside.
+        container.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+            observer.disconnect();
+            container.removeEventListener("scroll", update, true);
+            window.removeEventListener("resize", update);
+        };
+    }, [containerRef, update]);
+
+    return (
+        <DrawPopover
+            {...rest}
+            popRef={popRef}
+            className={`cd-pop--float cd-pop--${placement?.side ?? "below"}${className ? ` ${className}` : ""}`}
+            style={placement
+                ? { left: placement.left, top: placement.top }
+                : { left: 0, top: 0, visibility: "hidden" }}
+        >
+            {placement ? <span className="cd-caret" style={{ left: placement.caretLeft }} /> : null}
+        </DrawPopover>
     );
 }

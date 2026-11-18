@@ -4,7 +4,7 @@ import { COLORS, DIMMED } from "./tokens";
 import { normalizeData, formatPercent, formatCount } from "./data";
 import Flow from "./Flow";
 import type { SelectionKey } from "./types";
-import { DiceIcon, DrawPopover, DrillToggle, useCaseDraw, useDrawMode } from "../common/caseDraw";
+import { DiceIcon, DrillToggle, FloatingDrawPopover, useCaseDraw, useDrawMode } from "../common/caseDraw";
 import type { DrawCategory } from "../common/caseDraw";
 
 /** The flow's groups, as the categories a case is drawn from. */
@@ -22,9 +22,6 @@ const DRAW_COLORS: Record<DrawCategory, string> = {
     // The band's own grey is too light to carry white text.
     tn: "#6e7781",
 };
-
-/** Where each drawable tile sits in the three-column grid, for the caret. */
-const TILE_COLUMN: Partial<Record<DrawCategory, number>> = { fn: 0, tp: 1, fp: 2 };
 
 /** Which tiles a given selection feeds into; everything else dims. */
 function isLit(tile: "open" | "exp" | "fp" | "precision" | "recall" | "rules",
@@ -155,8 +152,6 @@ export default function ExplanationStatus({
     const tileDraw = (key: SelectionKey) =>
         drill ? { drawable: counts[key] > 0, empty: counts[key] === 0 } : {};
 
-    const caretColumn = draw.target ? TILE_COLUMN[draw.target.category] : undefined;
-
     return (
         <div className="es-root" {...mode.rootProps}>
             <div className="es-header">
@@ -227,21 +222,6 @@ export default function ExplanationStatus({
                     onSelect={() => toggle("fp")}
                     {...tileDraw("fp")}
                 />
-                {/* Sits in the grid, right under the row of tiles it belongs to. */}
-                {draw.target ? (
-                    <DrawPopover
-                        draw={{ ...draw, close: closeDraw }}
-                        color={DRAW_COLORS[draw.target.category]}
-                        className="es-draw-pop"
-                    >
-                        {caretColumn === undefined ? null : (
-                            <span
-                                className="es-draw-caret"
-                                style={{ left: `${((2 * caretColumn + 1) / 6) * 100}%` }}
-                            />
-                        )}
-                    </DrawPopover>
-                ) : null}
                 <Tile
                     label="Precision"
                     value={formatPercent(data.precision)}
@@ -264,6 +244,17 @@ export default function ExplanationStatus({
                     context={drill}
                 />
             </div>
+
+            {/* Laid over the widget, under the tile -- or, for cases left
+                alone, the band -- the case was drawn from. */}
+            {draw.target ? (
+                <FloatingDrawPopover
+                    draw={{ ...draw, close: closeDraw }}
+                    color={DRAW_COLORS[draw.target.category]}
+                    containerRef={mode.rootProps.ref}
+                    anchors={[".es-tile[aria-pressed=\"true\"]", ".es-band--drawn"]}
+                />
+            ) : null}
         </div>
     );
 }

@@ -633,12 +633,6 @@
     white-space: nowrap;
 }
 
-.rs-root td.rs-draw-cell {
-    padding: 0 12px 10px;
-    border-bottom: 1px solid var(--rs-border);
-}
-
-.rs-draw-pop {
-    max-width: 720px;
-    animation: rs-slide 160ms ease;
+.rs-widget {
+    position: relative;
 }

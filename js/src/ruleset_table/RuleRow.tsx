@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { roundPredicate } from "./data";
 import { TOKENS } from "./tokens";
 import MetricCell from "./MetricCell";
-import SplitGlyphCell, { DRAW_COLORS } from "./SplitGlyphCell";
-import { DrawPopover } from "../common/caseDraw";
+import SplitGlyphCell from "./SplitGlyphCell";
 import type { CaseDraw } from "../common/caseDraw";
 import type { ActionKind, NormalizedRule, TableMode } from "./types";
 
@@ -217,21 +216,6 @@ export default function RuleRow({
 
     const hasAnnotation = rule.annotation.trim() !== "";
 
-    // The case drawn from one of this row's counts, right under the row.
-    const drawTarget = draw && draw.target?.ruleId === rule.ioxRuleId ? draw.target : null;
-    const drawPanel = draw && drawTarget && drawTarget.category !== "tn" && (
-        <tr>
-            <td className="rs-draw-cell" colSpan={colSpan}>
-                <DrawPopover
-                    draw={draw}
-                    color={DRAW_COLORS[drawTarget.category]}
-                    scope={`for ${rule.ruleName}`}
-                    className="rs-draw-pop"
-                />
-            </td>
-        </tr>
-    );
-
     const notePanel = isStored && isNoteOpen && (
         <tr>
             <td className="rs-panel-cell" colSpan={colSpan}>
@@ -307,7 +291,6 @@ export default function RuleRow({
                     </td>
                 )}
             </tr>
-            {drawPanel}
             {actionPanel}
             {notePanel}
         </>

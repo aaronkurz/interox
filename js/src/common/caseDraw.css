@@ -176,3 +176,51 @@
     background: #f6f8fa;
     color: #24292f;
 }
+
+/* A popover laid over its widget (FloatingDrawPopover): the container is
+   positioned, the popover is placed next to the target it was drawn from. */
+.cd-pop--float {
+    position: absolute;
+    z-index: 40;
+    width: max-content;
+    max-width: min(760px, calc(100% - 16px));
+    animation: cd-pop-in 140ms ease;
+}
+
+.cd-caret {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: #ffffff;
+    border: 1px solid #d0d7de;
+    transform: rotate(45deg);
+}
+
+.cd-pop--below .cd-caret {
+    top: -7px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.cd-pop--above .cd-caret {
+    bottom: -7px;
+    border-left: none;
+    border-top: none;
+}
+
+@keyframes cd-pop-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cd-pop--float {
+        animation: none;
+    }
+}
